@@ -8,12 +8,35 @@ function statusColor(s: Alert['status']) {
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
   useEffect(() => {
     fetch('http://localhost:3000/stub/alerts/today').then(r => r.json()).then(j => setAlerts(j.data));
   }, []);
+  async function retryCall(alertId: string) {
+    try {
+      setPendingId(alertId);
+      setMessage(null);
+      const res = await fetch('http://localhost:3000/stub/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alert_id: alertId }),
+      });
+      const j = await res.json();
+      if (res.ok) setMessage(`再コールを送信しました (call_id: ${j.call_id})`);
+      else setMessage(`エラー: ${j?.error || res.status}`);
+    } catch (e: any) {
+      setMessage(`エラー: ${e?.message || 'unknown'}`);
+    } finally {
+      setPendingId(null);
+    }
+  }
   return (
     <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
       <h1>当日アラート一覧（ダミー）</h1>
+      {message && (
+        <div style={{ background: '#eef7ff', border: '1px solid #b6dbff', padding: 8, marginBottom: 12 }}>{message}</div>
+      )}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         <Kpi label="OK" value={1} color="#1E834F" />
         <Kpi label="未応答" value={1} color="#B32424" />
@@ -31,7 +54,9 @@ export default function AlertsPage() {
               <span style={{ color: '#666', marginLeft: 8, fontWeight: 400 }}>（{a.minutes}分前）</span>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button style={{ padding: '8px 12px' }}>再コール</button>
+              <button onClick={() => retryCall(a.id)} disabled={pendingId === a.id} style={{ padding: '8px 12px' }}>
+                {pendingId === a.id ? '送信中...' : '再コール'}
+              </button>
               <button style={{ padding: '8px 12px' }}>詳細</button>
             </div>
           </div>
