@@ -1,4 +1,4 @@
-import { judgeAlert } from './judgeAlert.js';
+import { judgeAlert, planEscalation } from './judgeAlert.js';
 
 const cases = [
   { level: '注意', hour: 9, expect: false },
@@ -20,3 +20,10 @@ if (!allPass) {
   process.exit(1);
 }
 console.log('jobs selftest OK');
+
+// quick check planEscalation
+const plan = planEscalation({ alertId: 'a1', household: { name: '山田花子', phone: '+81000000000' }, familyLineUserId: 'Uxxx' });
+if (!(Array.isArray(plan) && plan.length === 4 && plan[3]?.type === 'line_push')) {
+  console.error('planEscalation unexpected', plan);
+  process.exit(1);
+}

@@ -16,6 +16,35 @@ export const state = {
   sequences: {},
 };
 
+// Simple LINE message templates
+const lineTemplates = {
+  family_unanswered: ({ name, phone }) => ({
+    title: `【未応答】${name}さんに2回お電話しました`,
+    body: '今すぐご確認をお願いします。',
+    buttons: [
+      { label: '今すぐ電話', type: 'link', href: phone ? `tel:${phone}` : undefined },
+      { label: '対応中', type: 'postback', data: { action: 'take_care' } },
+      { label: '近隣へ依頼', type: 'postback', data: { action: 'ask_neighbor' } },
+    ],
+  }),
+  urgent_incident: ({ name }) => ({
+    title: `【至急】${name}さんが助けを求めています`,
+    body: 'すぐに連絡をお願いします。迷ったら119へ。',
+    buttons: [
+      { label: '今すぐ電話', type: 'link', href: undefined },
+      { label: '対応中', type: 'postback', data: { action: 'take_care' } },
+      { label: '119/救急相談', type: 'link', href: 'tel:119' },
+    ],
+  }),
+  in_progress: ({ name }) => ({
+    title: `【対応中】${name}さんの対応を開始しました`,
+    body: '完了したら記録してください。',
+    buttons: [
+      { label: '完了を記録', type: 'postback', data: { action: 'done' } },
+    ],
+  }),
+};
+
 // Health
 app.get('/_stub/state', (req, res) => {
   res.json({ ok: true, counts: {
@@ -59,6 +88,18 @@ app.post('/stub/line', (req, res) => {
   const id = `l_${nanoid(8)}`;
   state.linePushes.push({ id, body: req.body, ts: Date.now() });
   res.json({ ok: true, push_id: id });
+});
+
+// LINE push with template
+app.post('/stub/line/push', (req, res) => {
+  const id = `l_${nanoid(8)}`;
+  const { to, to_line_user_id, template_id, params = {} } = req.body || {};
+  const render = lineTemplates[template_id];
+  if (!render) return res.status(400).json({ error: 'unknown_template' });
+  const message = render(params);
+  const record = { id, to: to || to_line_user_id, template_id, message, ts: Date.now() };
+  state.linePushes.push(record);
+  res.json({ ok: true, push_id: id, message });
 });
 
 // SMS stub
