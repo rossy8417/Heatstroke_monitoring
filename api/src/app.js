@@ -6,13 +6,35 @@ import cors from 'cors';
 import line from '@line/bot-sdk';
 
 export const app = express();
-app.use(express.json());
 app.use(morgan('dev'));
 app.use(cors());
 
 // Optional LINE client (only if access token provided)
 const lineAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 const lineClient = lineAccessToken ? new line.Client({ channelAccessToken: lineAccessToken }) : null;
+
+// Define LINE webhook BEFORE json parser to avoid 400 on verification
+const configuredLineSecret = process.env.LINE_CHANNEL_SECRET;
+const lineWebhookMiddlewares = configuredLineSecret ? [line.middleware({ channelSecret: configuredLineSecret })] : [express.json()];
+app.post('/webhooks/line', ...lineWebhookMiddlewares, (req, res) => {
+  const body = req.body || {};
+  state.webhooks.push({ type: 'line', payload: body, ts: Date.now() });
+  try {
+    const events = body.events || [];
+    for (const ev of events) {
+      if (ev.type === 'postback') {
+        const data = typeof ev.postback?.data === 'string' ? parseQuery(ev.postback.data) : (ev.postback?.data || {});
+        const action = data.action;
+        const alertId = data.alert_id;
+        if (action && alertId) applyLineAction(action, alertId);
+      }
+    }
+  } catch {}
+  res.json({ ok: true });
+});
+
+// JSON parser for other routes (must come after LINE webhook route)
+app.use(express.json());
 
 // In-memory stub state
 export const state = {
@@ -160,26 +182,6 @@ app.post('/webhooks/sms', verifySignatureOptional, (req, res) => {
   res.json({ ok: true });
 });
 
-// Webhook: line events
-app.post('/webhooks/line', verifyLineSignatureIfConfigured, (req, res) => {
-  const body = req.body || {};
-  state.webhooks.push({ type: 'line', payload: body, ts: Date.now() });
-  // Minimal handler: map postback actions to internal alert state
-  try {
-    const events = body.events || [];
-    for (const ev of events) {
-      if (ev.type === 'postback') {
-        const data = typeof ev.postback?.data === 'string' ? parseQuery(ev.postback.data) : (ev.postback?.data || {});
-        const action = data.action;
-        const alertId = data.alert_id;
-        if (action && alertId) applyLineAction(action, alertId);
-      }
-    }
-  } catch (e) {
-    // ignore errors in stub handler
-  }
-  res.json({ ok: true });
-});
 
 // LINE postback simulation (対応中/完了)
 app.post('/stub/line/postback', (req, res) => {
@@ -261,15 +263,7 @@ function computeSummary(list) {
   return sum;
 }
 
-function verifyLineSignatureIfConfigured(req, res, next) {
-  const channelSecret = process.env.LINE_CHANNEL_SECRET;
-  if (!channelSecret) return next();
-  try {
-    line.middleware({ channelSecret })(req, res, next);
-  } catch (e) {
-    return res.status(401).json({ error: 'bad_line_signature' });
-  }
-}
+// (signature check handled by route-level middleware above)
 
 function buildLineMessage(templateId, params) {
   const tmpl = lineTemplates[templateId]?.(params) || { title: '通知', body: '' };
