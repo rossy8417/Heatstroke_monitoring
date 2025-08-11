@@ -22,7 +22,9 @@
   - POST `/stub/call` { alert_id?, force_dtmf? }
   - POST `/stub/line` { ... } / `POST /stub/line/push` with template
   - POST `/stub/sms` { to, reason }
-  - POST `/webhooks/voice|sms|line` (optional HMAC via `WEBHOOK_SECRET`)
+  - POST `/webhooks/voice|sms|line` (optional HMAC via `WEBHOOK_SECRET`; LINE署名検証は`LINE_CHANNEL_SECRET`)
+  - POST `/stub/line/postback` { action: 'take_care' | 'done', alert_id }
+  - GET `/stub/alerts/today` (summary含む)
 
 ### Jobs (alert judgment)
 - Location: `jobs`

@@ -3,6 +3,7 @@ import morgan from 'morgan';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import cors from 'cors';
+import line from '@line/bot-sdk';
 
 export const app = express();
 app.use(express.json());
@@ -147,7 +148,7 @@ app.post('/webhooks/sms', verifySignatureOptional, (req, res) => {
 });
 
 // Webhook: line events
-app.post('/webhooks/line', verifySignatureOptional, (req, res) => {
+app.post('/webhooks/line', verifyLineSignatureIfConfigured, (req, res) => {
   state.webhooks.push({ type: 'line', payload: req.body, ts: Date.now() });
   res.json({ ok: true });
 });
@@ -230,4 +231,14 @@ function computeSummary(list) {
     if (a.status in sum) sum[a.status]++;
   }
   return sum;
+}
+
+function verifyLineSignatureIfConfigured(req, res, next) {
+  const channelSecret = process.env.LINE_CHANNEL_SECRET;
+  if (!channelSecret) return next();
+  try {
+    line.middleware({ channelSecret })(req, res, next);
+  } catch (e) {
+    return res.status(401).json({ error: 'bad_line_signature' });
+  }
 }
