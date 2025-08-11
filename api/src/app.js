@@ -10,6 +10,10 @@ app.use(express.json());
 app.use(morgan('dev'));
 app.use(cors());
 
+// Optional LINE client (only if access token provided)
+const lineAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+const lineClient = lineAccessToken ? new line.Client({ channelAccessToken: lineAccessToken }) : null;
+
 // In-memory stub state
 export const state = {
   calls: [],
@@ -114,8 +118,8 @@ app.post('/stub/line', (req, res) => {
   res.json({ ok: true, push_id: id });
 });
 
-// LINE push with template
-app.post('/stub/line/push', (req, res) => {
+// LINE push with template (uses real push when LINE access token is configured)
+app.post('/stub/line/push', async (req, res) => {
   const id = `l_${nanoid(8)}`;
   const { to, to_line_user_id, template_id, params = {} } = req.body || {};
   const render = lineTemplates[template_id];
@@ -123,7 +127,16 @@ app.post('/stub/line/push', (req, res) => {
   const message = render(params);
   const record = { id, to: to || to_line_user_id, template_id, message, ts: Date.now() };
   state.linePushes.push(record);
-  res.json({ ok: true, push_id: id, message });
+  try {
+    if (lineClient && (to || to_line_user_id)) {
+      const lineMessage = buildLineMessage(template_id, params);
+      await lineClient.pushMessage(to || to_line_user_id, lineMessage);
+      return res.json({ ok: true, push_id: id, message, delivered: true });
+    }
+    return res.json({ ok: true, push_id: id, message, delivered: false });
+  } catch (e) {
+    return res.status(502).json({ error: 'line_push_failed', detail: String(e?.message || e) });
+  }
 });
 
 // SMS stub
@@ -149,7 +162,22 @@ app.post('/webhooks/sms', verifySignatureOptional, (req, res) => {
 
 // Webhook: line events
 app.post('/webhooks/line', verifyLineSignatureIfConfigured, (req, res) => {
-  state.webhooks.push({ type: 'line', payload: req.body, ts: Date.now() });
+  const body = req.body || {};
+  state.webhooks.push({ type: 'line', payload: body, ts: Date.now() });
+  // Minimal handler: map postback actions to internal alert state
+  try {
+    const events = body.events || [];
+    for (const ev of events) {
+      if (ev.type === 'postback') {
+        const data = typeof ev.postback?.data === 'string' ? parseQuery(ev.postback.data) : (ev.postback?.data || {});
+        const action = data.action;
+        const alertId = data.alert_id;
+        if (action && alertId) applyLineAction(action, alertId);
+      }
+    }
+  } catch (e) {
+    // ignore errors in stub handler
+  }
   res.json({ ok: true });
 });
 
@@ -241,4 +269,44 @@ function verifyLineSignatureIfConfigured(req, res, next) {
   } catch (e) {
     return res.status(401).json({ error: 'bad_line_signature' });
   }
+}
+
+function buildLineMessage(templateId, params) {
+  const tmpl = lineTemplates[templateId]?.(params) || { title: '通知', body: '' };
+  // Send as simple text with quick reply buttons for MVP
+  const items = (tmpl.buttons || []).map((b) => {
+    if (b.type === 'postback') {
+      return {
+        type: 'action',
+        action: {
+          type: 'postback',
+          label: b.label,
+          data: new URLSearchParams({ ...(b.data || {}), alert_id: params.alert_id || '' }).toString(),
+        },
+      };
+    }
+    return { type: 'action', action: { type: 'uri', label: b.label, uri: b.href || 'https://line.me' } };
+  });
+  return {
+    type: 'text',
+    text: `${tmpl.title}\n${tmpl.body}`.slice(0, 1000),
+    quickReply: items.length ? { items } : undefined,
+  };
+}
+
+function applyLineAction(action, alertId) {
+  const target = state.alerts.find((a) => a.id === alertId);
+  if (!target) return;
+  if (action === 'take_care') {
+    target.inProgress = true;
+  } else if (action === 'done') {
+    target.inProgress = false;
+    target.status = 'ok';
+  }
+}
+
+function parseQuery(qs) {
+  const out = {};
+  for (const [k, v] of new URLSearchParams(qs)) out[k] = v;
+  return out;
 }
