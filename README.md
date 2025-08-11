@@ -20,7 +20,8 @@
   - GET `/_stub/state`
   - GET `/stub/weather?grid=5339-24-XXXX`
   - POST `/stub/call` { alert_id?, force_dtmf? }
-  - POST `/stub/line` { ... }
+  - POST `/stub/line` { ... } / `POST /stub/line/push` with template
+  - POST `/stub/sms` { to, reason }
   - POST `/webhooks/voice|sms|line` (optional HMAC via `WEBHOOK_SECRET`)
 
 ### Jobs (alert judgment)
@@ -30,6 +31,16 @@
   cd jobs
   npm install
   npm run selftest
+  ```
+
+### Web (admin UI)
+- Location: `web`
+- Run dev:
+  ```bash
+  cd web
+  npm install
+  npm run dev
+  # open http://localhost:3001
   ```
 
 ### CI
