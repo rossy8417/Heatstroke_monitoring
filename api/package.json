@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --env-file=.env --watch src/server.js",
-    "start": "node --env-file=.env src/server.js"
+    "start": "node --env-file=.env src/server.js",
+    "selftest": "node src/selftest.js"
   },
   "dependencies": {
     "express": "^4.19.2",
