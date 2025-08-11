@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-type Alert = { id: string; household: string; status: 'ok' | 'unanswered' | 'tired' | 'help'; minutes: number };
+type Alert = { id: string; household: string; status: 'ok' | 'unanswered' | 'tired' | 'help'; minutes: number; inProgress?: boolean };
 
 function statusColor(s: Alert['status']) {
   return s === 'ok' ? '#1E834F' : s === 'unanswered' ? '#B32424' : s === 'tired' ? '#C76F00' : '#6B3FA0';
@@ -43,8 +43,26 @@ export default function AlertsPage() {
       });
       const j = await res.json();
       if (res.ok) {
-        setAlerts(prev => (prev || []).map(a => (a.id === alertId ? { ...a, status: j.alert.status as any } : a)));
+        setAlerts(prev => (prev || []).map(a => (a.id === alertId ? { ...a, status: j.alert.status as any, inProgress: j.alert.inProgress } : a)));
+        setSummary(j.summary);
         setMessage('対応中を記録しました');
+      } else setMessage(`エラー: ${j?.error || res.status}`);
+    } catch (e: any) {
+      setMessage(`エラー: ${e?.message || 'unknown'}`);
+    }
+  }
+  async function lineDone(alertId: string) {
+    try {
+      const res = await fetch('http://localhost:3000/stub/line/postback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'done', alert_id: alertId }),
+      });
+      const j = await res.json();
+      if (res.ok) {
+        setAlerts(prev => (prev || []).map(a => (a.id === alertId ? { ...a, status: j.alert.status as any, inProgress: j.alert.inProgress } : a)));
+        setSummary(j.summary);
+        setMessage('完了を記録しました');
       } else setMessage(`エラー: ${j?.error || res.status}`);
     } catch (e: any) {
       setMessage(`エラー: ${e?.message || 'unknown'}`);
@@ -67,6 +85,7 @@ export default function AlertsPage() {
           <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '1fr 140px 180px', alignItems: 'center', padding: '12px 8px', borderBottom: '1px solid #eee' }}>
             <div>
               <div style={{ fontWeight: 600 }}>{a.household}</div>
+              {a.inProgress && <div style={{ marginTop: 4, display: 'inline-block', padding: '2px 6px', borderRadius: 4, background: '#fff5da', border: '1px solid #ffd26e', fontSize: 12, color: '#8a6d1b' }}>対応中</div>}
             </div>
             <div style={{ color: statusColor(a.status), fontWeight: 700 }}>
               {a.status === 'ok' ? 'OK' : a.status === 'unanswered' ? '未応答' : a.status === 'tired' ? 'しんどい' : 'ヘルプ'}
@@ -77,6 +96,7 @@ export default function AlertsPage() {
                 {pendingId === a.id ? '送信中...' : '再コール'}
               </button>
               <button onClick={() => lineTakeCare(a.id)} style={{ padding: '8px 12px' }}>対応中</button>
+              <button onClick={() => lineDone(a.id)} style={{ padding: '8px 12px' }}>完了</button>
               <button style={{ padding: '8px 12px' }}>詳細</button>
             </div>
           </div>
