@@ -16,6 +16,11 @@ export const state = {
   linePushes: [],
   webhooks: [],
   sequences: {},
+  alerts: [
+    { id: 'a1', household: '山田花子（5339-24）', status: 'unanswered', minutes: 8, inProgress: false },
+    { id: 'a2', household: '佐藤太郎（5339-25）', status: 'ok', minutes: 3, inProgress: false },
+    { id: 'a3', household: '鈴木一郎（5339-24）', status: 'help', minutes: 1, inProgress: false },
+  ],
 };
 
 // Simple LINE message templates
@@ -66,12 +71,18 @@ app.get('/stub/weather', (req, res) => {
 
 // Alerts list stub for Admin UI
 app.get('/stub/alerts/today', (req, res) => {
-  const list = [
-    { id: 'a1', household: '山田花子（5339-24）', status: 'unanswered', minutes: 8 },
-    { id: 'a2', household: '佐藤太郎（5339-25）', status: 'ok', minutes: 3 },
-    { id: 'a3', household: '鈴木一郎（5339-24）', status: 'help', minutes: 1 },
+  const list = state.alerts;
+  const summary = computeSummary(list);
+  res.json({ ok: true, data: list, summary });
+});
+
+app.post('/stub/alerts/reset', (req, res) => {
+  state.alerts = [
+    { id: 'a1', household: '山田花子（5339-24）', status: 'unanswered', minutes: 8, inProgress: false },
+    { id: 'a2', household: '佐藤太郎（5339-25）', status: 'ok', minutes: 3, inProgress: false },
+    { id: 'a3', household: '鈴木一郎（5339-24）', status: 'help', minutes: 1, inProgress: false },
   ];
-  res.json({ ok: true, data: list });
+  res.json({ ok: true });
 });
 
 // Call stub: simulate async completion posting to /webhooks/voice
@@ -141,6 +152,21 @@ app.post('/webhooks/line', verifySignatureOptional, (req, res) => {
   res.json({ ok: true });
 });
 
+// LINE postback simulation (対応中/完了)
+app.post('/stub/line/postback', (req, res) => {
+  const { action, alert_id } = req.body || {};
+  const target = state.alerts.find(a => a.id === alert_id);
+  if (!target) return res.status(404).json({ error: 'alert_not_found' });
+  if (action === 'take_care') {
+    target.inProgress = true;
+  } else if (action === 'done') {
+    target.inProgress = false;
+    target.status = 'ok';
+  }
+  state.webhooks.push({ type: 'line_postback', payload: { action, alert_id }, ts: Date.now() });
+  res.json({ ok: true, alert: target, summary: computeSummary(state.alerts) });
+});
+
 // Orchestrate unanswered sequence: call#1 -> SMS -> delay -> call#2
 app.post('/stub/sequence/start', (req, res) => {
   const alertId = req.body?.alert_id || `a_${nanoid(6)}`;
@@ -196,4 +222,12 @@ function verifySignatureOptional(req, res, next) {
   const hmac = crypto.createHmac('sha256', secret).update(body).digest('hex');
   if (!sig.endsWith(hmac)) return res.status(401).json({ error: 'bad signature' });
   next();
+}
+
+function computeSummary(list) {
+  const sum = { ok: 0, unanswered: 0, tired: 0, help: 0 };
+  for (const a of list) {
+    if (a.status in sum) sum[a.status]++;
+  }
+  return sum;
 }

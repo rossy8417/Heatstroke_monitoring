@@ -31,6 +31,22 @@ export default function AlertsPage() {
       setPendingId(null);
     }
   }
+  async function lineTakeCare(alertId: string) {
+    try {
+      const res = await fetch('http://localhost:3000/stub/line/postback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'take_care', alert_id: alertId }),
+      });
+      const j = await res.json();
+      if (res.ok) {
+        setAlerts(prev => (prev || []).map(a => (a.id === alertId ? { ...a, status: j.alert.status as any } : a)));
+        setMessage('対応中を記録しました');
+      } else setMessage(`エラー: ${j?.error || res.status}`);
+    } catch (e: any) {
+      setMessage(`エラー: ${e?.message || 'unknown'}`);
+    }
+  }
   return (
     <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
       <h1>当日アラート一覧（ダミー）</h1>
@@ -57,6 +73,7 @@ export default function AlertsPage() {
               <button onClick={() => retryCall(a.id)} disabled={pendingId === a.id} style={{ padding: '8px 12px' }}>
                 {pendingId === a.id ? '送信中...' : '再コール'}
               </button>
+              <button onClick={() => lineTakeCare(a.id)} style={{ padding: '8px 12px' }}>対応中</button>
               <button style={{ padding: '8px 12px' }}>詳細</button>
             </div>
           </div>
