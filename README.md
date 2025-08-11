@@ -14,6 +14,7 @@
   ```bash
   cd api
   npm install
+  cp .env.example .env  # 値を設定
   npm run dev
   ```
 - Endpoints:
