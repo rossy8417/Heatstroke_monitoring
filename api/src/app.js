@@ -91,6 +91,29 @@ app.get('/_stub/state', (req, res) => {
   }});
 });
 
+// List recent webhooks (for debugging)
+app.get('/_stub/webhooks', (req, res) => {
+  const { type, limit } = req.query;
+  let items = state.webhooks;
+  if (type) items = items.filter(w => w.type === String(type));
+  const lim = Math.min(Number(limit ?? 20), 200);
+  res.json({ ok: true, data: items.slice(-lim) });
+});
+
+// Get last LINE userId seen in webhook events
+app.get('/_stub/line/last-user', (req, res) => {
+  for (let i = state.webhooks.length - 1; i >= 0; i--) {
+    const w = state.webhooks[i];
+    if (w.type !== 'line') continue;
+    const events = w.payload?.events || [];
+    for (const ev of events) {
+      const uid = ev?.source?.userId;
+      if (uid) return res.json({ ok: true, userId: uid, eventType: ev.type });
+    }
+  }
+  res.status(404).json({ error: 'not_found' });
+});
+
 // Weather stub
 app.get('/stub/weather', (req, res) => {
   const grid = req.query.grid || '5339-24-XXXX';
