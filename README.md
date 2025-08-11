@@ -23,6 +23,19 @@
   - POST `/stub/line` { ... }
   - POST `/webhooks/voice|sms|line` (optional HMAC via `WEBHOOK_SECRET`)
 
+### Jobs (alert judgment)
+- Location: `jobs`
+- Run self test:
+  ```bash
+  cd jobs
+  npm install
+  npm run selftest
+  ```
+
+### CI
+- GitHub Actions: `/.github/workflows/ci.yml`
+  - Runs `api` and `jobs` self-tests on push/PR to `main`
+
 ### Mono-repo structure
 - `api`: Stub API server (Express)
 - `web`: Admin UI (Next.js placeholder)
