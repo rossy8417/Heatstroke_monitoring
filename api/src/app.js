@@ -3,7 +3,7 @@ import morgan from 'morgan';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import cors from 'cors';
-import line from '@line/bot-sdk';
+import { Client as LineClient, middleware as lineMiddleware } from '@line/bot-sdk';
 
 export const app = express();
 app.use(morgan('dev'));
@@ -11,11 +11,12 @@ app.use(cors());
 
 // Optional LINE client (only if access token provided)
 const lineAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-const lineClient = lineAccessToken ? new line.Client({ channelAccessToken: lineAccessToken }) : null;
+const lineClient = lineAccessToken ? new LineClient({ channelAccessToken: lineAccessToken }) : null;
 
 // Define LINE webhook BEFORE json parser to avoid 400 on verification
 const configuredLineSecret = process.env.LINE_CHANNEL_SECRET;
-const lineWebhookMiddlewares = configuredLineSecret ? [line.middleware({ channelSecret: configuredLineSecret })] : [express.json()];
+const lineWebhookMiddlewares = configuredLineSecret ? [lineMiddleware({ channelSecret: configuredLineSecret })] : [express.json()];
+app.get('/webhooks/line', (req, res) => res.status(200).send('OK'));
 app.post('/webhooks/line', ...lineWebhookMiddlewares, (req, res) => {
   const body = req.body || {};
   state.webhooks.push({ type: 'line', payload: body, ts: Date.now() });
