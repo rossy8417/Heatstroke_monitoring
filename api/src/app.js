@@ -13,6 +13,7 @@ export const state = {
   sms: [],
   linePushes: [],
   webhooks: [],
+  sequences: {},
 };
 
 // Health
@@ -22,6 +23,7 @@ app.get('/_stub/state', (req, res) => {
     sms: state.sms.length,
     linePushes: state.linePushes.length,
     webhooks: state.webhooks.length,
+    sequences: Object.keys(state.sequences).length,
   }});
 });
 
@@ -59,6 +61,15 @@ app.post('/stub/line', (req, res) => {
   res.json({ ok: true, push_id: id });
 });
 
+// SMS stub
+app.post('/stub/sms', (req, res) => {
+  const id = `s_${nanoid(8)}`;
+  const to = req.body?.to || 'unknown';
+  const reason = req.body?.reason || 'unanswered_1';
+  state.sms.push({ id, to, reason, body: req.body, ts: Date.now() });
+  res.json({ ok: true, sms_id: id });
+});
+
 // Webhook: voice results
 app.post('/webhooks/voice', verifySignatureOptional, (req, res) => {
   state.webhooks.push({ type: 'voice', payload: req.body, ts: Date.now() });
@@ -75,6 +86,52 @@ app.post('/webhooks/sms', verifySignatureOptional, (req, res) => {
 app.post('/webhooks/line', verifySignatureOptional, (req, res) => {
   state.webhooks.push({ type: 'line', payload: req.body, ts: Date.now() });
   res.json({ ok: true });
+});
+
+// Orchestrate unanswered sequence: call#1 -> SMS -> delay -> call#2
+app.post('/stub/sequence/start', (req, res) => {
+  const alertId = req.body?.alert_id || `a_${nanoid(6)}`;
+  const householdId = req.body?.household_id || `h_${nanoid(6)}`;
+  const delayMs = Number(req.body?.delay_ms ?? 300000); // default 5 minutes
+  const finalDtmf = req.body?.final_dtmf; // optional outcome for 2nd call
+  const seqId = `seq_${nanoid(8)}`;
+  const now = Date.now();
+  state.sequences[seqId] = {
+    id: seqId,
+    alertId,
+    householdId,
+    status: 'running',
+    steps: [],
+    createdAt: now,
+  };
+
+  // step 1: call #1 (assume noanswer)
+  const call1Id = `c_${nanoid(8)}`;
+  state.calls.push({ callId: call1Id, alertId, householdId, attempt: 1, result: 'noanswer', ts: now });
+  state.sequences[seqId].steps.push({ type: 'call', attempt: 1, result: 'noanswer', callId: call1Id, ts: now });
+
+  // step 2: SMS
+  const smsId = `s_${nanoid(8)}`;
+  state.sms.push({ id: smsId, to: householdId, reason: 'unanswered_1', ts: Date.now() });
+  state.sequences[seqId].steps.push({ type: 'sms', smsId, ts: Date.now() });
+
+  // step 3: after delayMs, call #2
+  setTimeout(() => {
+    const call2Id = `c_${nanoid(8)}`;
+    const outcome = finalDtmf ?? 'noanswer';
+    state.calls.push({ callId: call2Id, alertId, householdId, attempt: 2, result: outcome, ts: Date.now() });
+    state.sequences[seqId].steps.push({ type: 'call', attempt: 2, result: outcome, callId: call2Id, ts: Date.now() });
+    state.sequences[seqId].status = 'done';
+  }, Math.max(0, delayMs));
+
+  res.json({ ok: true, sequence_id: seqId });
+});
+
+// Inspect sequence
+app.get('/_stub/sequence/:id', (req, res) => {
+  const seq = state.sequences[req.params.id];
+  if (!seq) return res.status(404).json({ error: 'not_found' });
+  res.json({ ok: true, sequence: seq });
 });
 
 function verifySignatureOptional(req, res, next) {
