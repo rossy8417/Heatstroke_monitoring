@@ -10,8 +10,11 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [summary, setSummary] = useState<{ ok: number; unanswered: number; tired: number; help: number } | null>(null);
   useEffect(() => {
-    fetch('http://localhost:3000/stub/alerts/today').then(r => r.json()).then(j => setAlerts(j.data));
+    fetch('http://localhost:3000/stub/alerts/today')
+      .then(r => r.json())
+      .then(j => { setAlerts(j.data); setSummary(j.summary); });
   }, []);
   async function retryCall(alertId: string) {
     try {
@@ -54,10 +57,10 @@ export default function AlertsPage() {
         <div style={{ background: '#eef7ff', border: '1px solid #b6dbff', padding: 8, marginBottom: 12 }}>{message}</div>
       )}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-        <Kpi label="OK" value={1} color="#1E834F" />
-        <Kpi label="未応答" value={1} color="#B32424" />
-        <Kpi label="要フォロー" value={0} color="#C76F00" />
-        <Kpi label="至急" value={1} color="#6B3FA0" />
+        <Kpi label="OK" value={summary?.ok ?? 0} color="#1E834F" />
+        <Kpi label="未応答" value={summary?.unanswered ?? 0} color="#B32424" />
+        <Kpi label="要フォロー" value={summary?.tired ?? 0} color="#C76F00" />
+        <Kpi label="至急" value={summary?.help ?? 0} color="#6B3FA0" />
       </div>
       <div>
         {(alerts ?? []).map(a => (
