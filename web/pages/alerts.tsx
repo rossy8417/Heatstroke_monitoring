@@ -1,16 +1,16 @@
-type Alert = { id: string; household: string; status: 'ok' | 'unanswered' | 'tired' | 'help'; minutes: number };
+import { useEffect, useState } from 'react';
 
-const sample: Alert[] = [
-  { id: 'a1', household: '山田花子（5339-24）', status: 'unanswered', minutes: 8 },
-  { id: 'a2', household: '佐藤太郎（5339-25）', status: 'ok', minutes: 3 },
-  { id: 'a3', household: '鈴木一郎（5339-24）', status: 'help', minutes: 1 },
-];
+type Alert = { id: string; household: string; status: 'ok' | 'unanswered' | 'tired' | 'help'; minutes: number };
 
 function statusColor(s: Alert['status']) {
   return s === 'ok' ? '#1E834F' : s === 'unanswered' ? '#B32424' : s === 'tired' ? '#C76F00' : '#6B3FA0';
 }
 
 export default function AlertsPage() {
+  const [alerts, setAlerts] = useState<Alert[] | null>(null);
+  useEffect(() => {
+    fetch('http://localhost:3000/stub/alerts/today').then(r => r.json()).then(j => setAlerts(j.data));
+  }, []);
   return (
     <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>
       <h1>当日アラート一覧（ダミー）</h1>
@@ -21,7 +21,7 @@ export default function AlertsPage() {
         <Kpi label="至急" value={1} color="#6B3FA0" />
       </div>
       <div>
-        {sample.map(a => (
+        {(alerts ?? []).map(a => (
           <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '1fr 140px 180px', alignItems: 'center', padding: '12px 8px', borderBottom: '1px solid #eee' }}>
             <div>
               <div style={{ fontWeight: 600 }}>{a.household}</div>
@@ -36,6 +36,8 @@ export default function AlertsPage() {
             </div>
           </div>
         ))}
+        {alerts?.length === 0 && <div>対象なし</div>}
+        {alerts === null && <div>読み込み中...</div>}
       </div>
     </main>
   );

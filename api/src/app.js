@@ -2,10 +2,12 @@ import express from 'express';
 import morgan from 'morgan';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
+import cors from 'cors';
 
 export const app = express();
 app.use(express.json());
 app.use(morgan('dev'));
+app.use(cors());
 
 // In-memory stub state
 export const state = {
@@ -60,6 +62,16 @@ app.get('/_stub/state', (req, res) => {
 app.get('/stub/weather', (req, res) => {
   const grid = req.query.grid || '5339-24-XXXX';
   res.json({ level: '警戒', wbgt: 29.2, grid });
+});
+
+// Alerts list stub for Admin UI
+app.get('/stub/alerts/today', (req, res) => {
+  const list = [
+    { id: 'a1', household: '山田花子（5339-24）', status: 'unanswered', minutes: 8 },
+    { id: 'a2', household: '佐藤太郎（5339-25）', status: 'ok', minutes: 3 },
+    { id: 'a3', household: '鈴木一郎（5339-24）', status: 'help', minutes: 1 },
+  ];
+  res.json({ ok: true, data: list });
 });
 
 // Call stub: simulate async completion posting to /webhooks/voice
