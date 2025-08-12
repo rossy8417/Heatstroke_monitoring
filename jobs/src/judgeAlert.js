@@ -14,6 +14,6 @@ export function planEscalation({ alertId, household, familyLineUserId }) {
     { type: 'call', attempt: 1 },
     { type: 'sms', reason: 'unanswered_1' },
     { type: 'call', attempt: 2 },
-    { type: 'line_push', template_id: 'family_unanswered', to_line_user_id: familyLineUserId, params: { name: household?.name, phone: household?.phone } },
+    { type: 'line_push', template_id: 'family_unanswered', to_line_user_id: familyLineUserId, params: { name: household?.name, phone: household?.phone, alert_id: alertId } },
   ];
 }
