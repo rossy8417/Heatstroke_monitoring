@@ -9,6 +9,7 @@ import { logger } from './utils/logger.js';
 import { validateEnv, getConfig } from './utils/envValidator.js';
 import { dataStore } from './services/dataStore.js';
 import { weatherService } from './services/weatherService.js';
+import apiRoutes from './routes/apiRoutes.js';
 
 const envValidation = validateEnv();
 if (envValidation.warnings.length > 0) {
@@ -68,6 +69,9 @@ app.post('/webhooks/line', ...lineWebhookMiddlewares, asyncHandler(async (req, r
 }));
 
 app.use(express.json());
+
+// 実データAPI
+app.use('/api', apiRoutes);
 
 const lineTemplates = {
   family_unanswered: ({ name, phone }) => ({
