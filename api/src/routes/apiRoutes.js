@@ -160,6 +160,23 @@ router.get('/alerts/summary', async (req, res) => {
 router.put('/alerts/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
+    
+    // in_progressの場合は、フラグを立てるだけでstatusは変更しない
+    if (status === 'in_progress') {
+      const { data: alert } = await supabaseDataStore.getAlert(req.params.id);
+      if (alert) {
+        // in_progressフラグを更新
+        const { data, error } = await supabaseDataStore.updateAlert(req.params.id, { 
+          in_progress: true 
+        });
+        if (error) {
+          return res.status(400).json({ error: error.message });
+        }
+        return res.json(data);
+      }
+    }
+    
+    // 通常のステータス更新
     const { data, error } = await supabaseDataStore.updateAlertStatus(req.params.id, status);
     
     if (error) {

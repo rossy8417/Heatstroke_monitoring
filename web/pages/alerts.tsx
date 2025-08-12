@@ -68,6 +68,7 @@ export default function AlertsPage() {
       case 'help': return '要支援';
       case 'escalated': return 'エスカレーション';
       case 'open': return '確認中';
+      case 'in_progress': return '未応答'; // in_progressは本来statusではないので、未応答として扱う
       default: return status;
     }
   };

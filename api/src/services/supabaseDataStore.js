@@ -204,6 +204,25 @@ class SupabaseDataStore {
     return { data, error: handleSupabaseError(error) };
   }
 
+  async updateAlert(id, updates) {
+    if (this.useInMemory) {
+      const alert = this.memoryStore.alerts.get(id);
+      if (!alert) return { data: null, error: { message: 'Not found' } };
+      
+      Object.assign(alert, updates);
+      return { data: alert, error: null };
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('alerts')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    return { data, error: handleSupabaseError(error) };
+  }
+
   async updateAlertStatus(id, status, actor = 'system') {
     if (this.useInMemory) {
       const alert = this.memoryStore.alerts.get(id);
