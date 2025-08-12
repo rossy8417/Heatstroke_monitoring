@@ -12,27 +12,27 @@ const api = axios.create({
 // 世帯管理
 export const householdsApi = {
   search: async (query?: string) => {
-    const { data } = await api.get('/api/households', { params: { q: query } });
-    return data;
+    const { data } = await api.get('/stub/households', { params: { q: query } });
+    return data.data || [];
   },
   
   get: async (id: string) => {
-    const { data } = await api.get(`/api/households/${id}`);
+    const { data } = await api.get(`/stub/households/${id}`);
     return data;
   },
   
   create: async (household: any) => {
-    const { data } = await api.post('/api/households', household);
+    const { data } = await api.post('/stub/households', household);
     return data;
   },
   
   update: async (id: string, updates: any) => {
-    const { data } = await api.put(`/api/households/${id}`, updates);
+    const { data } = await api.put(`/stub/households/${id}`, updates);
     return data;
   },
   
   delete: async (id: string) => {
-    const { data } = await api.delete(`/api/households/${id}`);
+    const { data } = await api.delete(`/stub/households/${id}`);
     return data;
   },
 };
@@ -40,13 +40,13 @@ export const householdsApi = {
 // アラート管理
 export const alertsApi = {
   getToday: async () => {
-    const { data } = await api.get('/api/alerts/today');
-    return data;
+    const { data } = await api.get('/stub/alerts/today');
+    return data.data || [];
   },
   
   getSummary: async () => {
-    const { data } = await api.get('/api/alerts/summary');
-    return data;
+    const { data } = await api.get('/stub/alerts/today');
+    return data.summary || {};
   },
   
   updateStatus: async (id: string, status: string) => {
@@ -71,7 +71,7 @@ export const callsApi = {
 // 天気情報
 export const weatherApi = {
   getCurrent: async (meshCode?: string) => {
-    const { data } = await api.get('/api/weather', { params: { mesh: meshCode } });
+    const { data } = await api.get('/stub/weather', { params: { grid: meshCode || '5339-24' } });
     return data;
   },
 };
