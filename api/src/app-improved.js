@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler, AppError, asyncHandler } from './middlew
 import { logger } from './utils/logger.js';
 import { validateEnv, getConfig } from './utils/envValidator.js';
 import { dataStore } from './services/dataStore.js';
+import { weatherService } from './services/weatherService.js';
 
 const envValidation = validateEnv();
 if (envValidation.warnings.length > 0) {
@@ -135,7 +136,51 @@ app.get('/_stub/line/last-user', asyncHandler(async (req, res) => {
 
 app.get('/stub/weather', asyncHandler(async (req, res) => {
   const grid = req.query.grid || '5339-24-XXXX';
+  
+  // 実際の気象データを取得（気象庁アメダス）
+  if (req.query.real === 'true') {
+    try {
+      const weatherData = await weatherService.getWeatherByMesh(grid);
+      logger.info('Real weather data fetched', { grid, wbgt: weatherData.wbgt, level: weatherData.level });
+      return res.json(weatherData);
+    } catch (error) {
+      logger.error('Failed to fetch real weather', { error: error.message });
+      // フォールバックとしてスタブデータを返す
+    }
+  }
+  
+  // スタブデータ（テスト用）
   res.json({ level: '警戒', wbgt: 29.2, grid });
+}));
+
+app.get('/weather/stations', asyncHandler(async (req, res) => {
+  const stations = await weatherService.getStations();
+  res.json({ ok: true, count: Object.keys(stations).length, stations });
+}));
+
+app.get('/weather/nearest', asyncHandler(async (req, res) => {
+  const lat = parseFloat(req.query.lat);
+  const lon = parseFloat(req.query.lon);
+  
+  if (isNaN(lat) || isNaN(lon)) {
+    throw new AppError('Invalid latitude or longitude', 400, 'INVALID_PARAMS');
+  }
+  
+  const station = await weatherService.findNearestStation(lat, lon);
+  const weatherData = await weatherService.getLatestData(station.id);
+  
+  const temp = weatherData.temp?.[0];
+  const humidity = weatherData.humidity?.[0];
+  const wbgt = temp && humidity ? weatherService.calculateWBGT(temp, humidity) : null;
+  const level = wbgt ? weatherService.getAlertLevel(wbgt) : null;
+  
+  res.json({
+    ok: true,
+    station,
+    weather: weatherData,
+    wbgt,
+    level
+  });
 }));
 
 app.get('/stub/alerts/today', asyncHandler(async (req, res) => {

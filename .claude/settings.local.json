@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(PORT=3001 node src/server-improved.js)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
