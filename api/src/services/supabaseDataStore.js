@@ -19,7 +19,7 @@ class SupabaseDataStore {
   async initialize() {
     if (this.useInMemory) {
       logger.warn('Using in-memory data store (Supabase not configured)');
-      return true;
+      return false;  // falseを返してSupabase接続を試みる
     }
 
     try {
