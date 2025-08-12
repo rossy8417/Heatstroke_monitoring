@@ -38,7 +38,46 @@ class TwilioService {
     }
 
     try {
-      // TwiMLのURL（音声フローを定義）
+      // Webhook URLが設定されていない場合は、直接TwiMLを使用
+      if (!process.env.TWILIO_WEBHOOK_URL) {
+        logger.info('Using direct TwiML (no webhook URL configured)');
+        
+        const call = await this.client.calls.create({
+          to,
+          from: this.phoneNumber,
+          twiml: `
+            <Response>
+              <Say language="ja-JP" voice="Polly.Mizuki">
+                こんにちは、${householdName}様。
+                熱中症見守りシステムです。
+                本日の熱中症警戒レベルが高くなっています。
+                体調はいかがですか？
+              </Say>
+              <Gather numDigits="1" timeout="10" action="https://demo.twilio.com/welcome/voice/">
+                <Say language="ja-JP" voice="Polly.Mizuki">
+                  お元気な場合は1を、
+                  疲れている場合は2を、
+                  助けが必要な場合は3を押してください。
+                </Say>
+              </Gather>
+              <Say language="ja-JP" voice="Polly.Mizuki">
+                入力がありませんでした。
+                ご家族に連絡いたします。
+              </Say>
+            </Response>
+          `
+        });
+        
+        logger.info(`Call initiated: ${call.sid} to ${to}`);
+        
+        return {
+          success: true,
+          callSid: call.sid,
+          status: call.status
+        };
+      }
+      
+      // Webhook URLが設定されている場合は、従来の方法を使用
       const twimlUrl = `${this.webhookUrl}/twiml?alertId=${alertId}&name=${encodeURIComponent(householdName)}&attempt=${attempt}`;
       
       const call = await this.client.calls.create({
