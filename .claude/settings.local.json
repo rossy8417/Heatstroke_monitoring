@@ -7,7 +7,9 @@
       "Bash(PORT=3001 node src/server-improved.js)",
       "Bash(curl:*)",
       "Bash(npm install:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(cd:*)",
+
     ],
     "deny": [],
     "ask": []
