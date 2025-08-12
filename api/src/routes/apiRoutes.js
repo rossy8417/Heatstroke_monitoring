@@ -17,6 +17,7 @@ supabaseDataStore.initialize().catch(err => {
 router.get('/households', async (req, res) => {
   try {
     const { q } = req.query;
+    // テナントIDを一時的に無効化（デバッグ用）
     const { data, error } = await supabaseDataStore.searchHouseholds(q);
     
     if (error) {
@@ -99,6 +100,7 @@ router.delete('/households/:id', async (req, res) => {
 // 本日のアラート一覧
 router.get('/alerts/today', async (req, res) => {
   try {
+    // テナントIDを一時的に無効化（デバッグ用）
     const { data, error } = await supabaseDataStore.getTodayAlerts();
     
     if (error) {
@@ -108,9 +110,19 @@ router.get('/alerts/today', async (req, res) => {
     // サマリーも取得
     const { data: summary } = await supabaseDataStore.getAlertSummary();
     
+    // サマリーのキー名を変換（_countを削除）
+    const formattedSummary = summary ? {
+      ok: summary.ok_count || summary.ok || 0,
+      unanswered: summary.unanswered_count || summary.unanswered || 0,
+      tired: summary.tired_count || summary.tired || 0,
+      help: summary.help_count || summary.help || 0,
+      escalated: summary.escalated_count || summary.escalated || 0,
+      open: summary.in_progress_count || summary.open || 0
+    } : { ok: 0, unanswered: 0, tired: 0, help: 0, escalated: 0, open: 0 };
+    
     res.json({ 
       data: data || [],
-      summary: summary || { ok: 0, unanswered: 0, tired: 0, help: 0, escalated: 0, open: 0 }
+      summary: formattedSummary
     });
   } catch (error) {
     logger.error('Failed to get today alerts', { error: error.message });
@@ -127,7 +139,17 @@ router.get('/alerts/summary', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     
-    res.json(data || { ok: 0, unanswered: 0, tired: 0, help: 0, escalated: 0, open: 0 });
+    // サマリーのキー名を変換（_countを削除）
+    const formattedSummary = data ? {
+      ok: data.ok_count || data.ok || 0,
+      unanswered: data.unanswered_count || data.unanswered || 0,
+      tired: data.tired_count || data.tired || 0,
+      help: data.help_count || data.help || 0,
+      escalated: data.escalated_count || data.escalated || 0,
+      open: data.in_progress_count || data.open || 0
+    } : { ok: 0, unanswered: 0, tired: 0, help: 0, escalated: 0, open: 0 };
+    
+    res.json(formattedSummary);
   } catch (error) {
     logger.error('Failed to get alert summary', { error: error.message });
     res.status(500).json({ error: 'Internal server error' });
