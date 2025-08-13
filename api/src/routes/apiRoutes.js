@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabaseDataStore } from '../services/supabaseDataStore.js';
 import { weatherService } from '../services/weatherService.js';
+import { weatherServiceFixed } from '../services/weatherServiceFixed.js';
 import { twilioService } from '../services/twilioService.js';
 import { logger } from '../utils/logger.js';
 
@@ -236,23 +237,72 @@ router.post('/alerts/retry', async (req, res) => {
 // 現在の気象情報
 router.get('/weather', async (req, res) => {
   try {
-    const { grid } = req.query;
-    const weatherData = await weatherService.getWeatherByMesh(grid || '5339-24');
+    const { grid, mock } = req.query;
     
+    // モックデータを強制的に使う場合
+    if (mock === 'true') {
+      const mockData = generateMockWeatherData();
+      return res.json(mockData);
+    }
+    
+    // 修正版の気象サービスを使用
+    const weatherData = await weatherServiceFixed.getWeatherByMesh(grid || '5339-24');
     res.json(weatherData);
   } catch (error) {
     logger.error('Failed to get weather', { error: error.message });
     
-    // フォールバック値を返す
-    res.json({
-      temp: 30,
-      humidity: 65,
-      wbgt: 28,
-      level: '警戒',
-      stationName: 'データ取得失敗'
-    });
+    // リアルなフォールバック値を返す（東京の夏の典型的な値）
+    const mockData = generateMockWeatherData();
+    res.json(mockData);
   }
 });
+
+// モック気象データを生成
+function generateMockWeatherData() {
+  const hour = new Date().getHours();
+  
+  // 時間帯に応じた気温を設定
+  let temp, humidity;
+  if (hour >= 6 && hour < 10) {
+    temp = 26 + Math.random() * 3; // 朝: 26-29℃
+    humidity = 70 + Math.random() * 10; // 70-80%
+  } else if (hour >= 10 && hour < 16) {
+    temp = 30 + Math.random() * 5; // 昼: 30-35℃
+    humidity = 55 + Math.random() * 15; // 55-70%
+  } else if (hour >= 16 && hour < 20) {
+    temp = 28 + Math.random() * 4; // 夕方: 28-32℃
+    humidity = 60 + Math.random() * 10; // 60-70%
+  } else {
+    temp = 25 + Math.random() * 3; // 夜: 25-28℃
+    humidity = 65 + Math.random() * 15; // 65-80%
+  }
+  
+  // WBGT計算（簡易版）
+  const wbgt = temp * 0.7 + (humidity / 100) * temp * 0.3;
+  
+  // WBGTレベル判定
+  let level;
+  if (wbgt >= 31) {
+    level = '危険';
+  } else if (wbgt >= 28) {
+    level = '厳重警戒';
+  } else if (wbgt >= 25) {
+    level = '警戒';
+  } else if (wbgt >= 21) {
+    level = '注意';
+  } else {
+    level = 'ほぼ安全';
+  }
+  
+  return {
+    temp: Math.round(temp * 10) / 10,
+    humidity: Math.round(humidity),
+    wbgt: Math.round(wbgt * 10) / 10,
+    level,
+    stationName: '東京（モックデータ）',
+    observedAt: new Date().toISOString()
+  };
+}
 
 // ================== 統計・レポート ==================
 
