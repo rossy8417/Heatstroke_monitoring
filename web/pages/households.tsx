@@ -2,8 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { householdsApi } from '../lib/api';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 
-export default function Households() {
+function HouseholdsContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
@@ -407,5 +408,13 @@ export default function Households() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Households() {
+  return (
+    <ProtectedRoute>
+      <HouseholdsContent />
+    </ProtectedRoute>
   );
 }

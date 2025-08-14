@@ -1,40 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { auth } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
   const router = useRouter();
+  const { signIn, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // すでにログインしている場合はリダイレクト
+  useEffect(() => {
+    if (user) {
+      const userType = user.user_metadata?.user_type || 'individual';
+      if (userType === 'individual') {
+        router.push('/personal/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [user, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    try {
-      const { data, error } = await auth.signIn(email, password);
-      
-      if (error) {
-        setError('メールアドレスまたはパスワードが正しくありません');
-        return;
-      }
-
-      // ユーザータイプに応じてリダイレクト
-      const userType = data.user?.user_metadata?.user_type || 'individual';
-      
-      if (userType === 'individual') {
-        router.push('/personal/dashboard');
-      } else {
-        router.push('/dashboard');
-      }
-    } catch (err) {
-      setError('ログインに失敗しました');
-    } finally {
-      setLoading(false);
+    const { error: signInError } = await signIn(email, password);
+    
+    if (signInError) {
+      setError('メールアドレスまたはパスワードが正しくありません');
     }
+    
+    setLoading(false);
   };
 
   return (

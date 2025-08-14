@@ -2,9 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { alertsApi, weatherApi } from '../lib/api';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { ProtectedRoute } from '../components/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
 
-export default function Dashboard() {
+function DashboardContent() {
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const { data: summary } = useQuery({
     queryKey: ['alertsSummary'],
     queryFn: alertsApi.getSummary,
@@ -45,10 +48,30 @@ export default function Dashboard() {
         borderBottom: '1px solid #e5e7eb',
         padding: '16px 24px',
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>
             熱中症見守りシステム
           </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ fontSize: '14px', color: '#6b7280' }}>
+              {user?.email}
+            </span>
+            <button
+              onClick={() => signOut()}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
       </header>
 
@@ -323,5 +346,13 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute requiredUserType="business">
+      <DashboardContent />
+    </ProtectedRoute>
   );
 }

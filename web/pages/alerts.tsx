@@ -4,8 +4,9 @@ import { useRouter } from 'next/router';
 import { alertsApi } from '../lib/api';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 
-export default function AlertsPage() {
+function AlertsContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
@@ -340,5 +341,13 @@ export default function AlertsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AlertsPage() {
+  return (
+    <ProtectedRoute>
+      <AlertsContent />
+    </ProtectedRoute>
   );
 }

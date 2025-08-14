@@ -2,13 +2,16 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { alertsApi, weatherApi } from '../../lib/api';
+import { ProtectedRoute } from '../../components/ProtectedRoute';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * 個人・家族向けダッシュボード
  * シンプルで見やすいUI
  */
-const PersonalDashboard: React.FC = () => {
+const PersonalDashboardContent: React.FC = () => {
   const router = useRouter();
+  const { user, signOut } = useAuth();
   // 自分の世帯のアラートのみ取得
   const { data: myAlert } = useQuery({
     queryKey: ['myAlert'],
@@ -101,13 +104,30 @@ const PersonalDashboard: React.FC = () => {
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>
             見守りアプリ
           </h1>
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>
-            {new Date().toLocaleDateString('ja-JP', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              weekday: 'long',
-            })}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>
+              {new Date().toLocaleDateString('ja-JP', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long',
+              })}
+            </div>
+            <button
+              onClick={() => signOut()}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              ログアウト
+            </button>
           </div>
         </div>
       </header>
@@ -312,6 +332,14 @@ const PersonalDashboard: React.FC = () => {
         </div>
       </main>
     </div>
+  );
+};
+
+const PersonalDashboard: React.FC = () => {
+  return (
+    <ProtectedRoute requiredUserType="individual">
+      <PersonalDashboardContent />
+    </ProtectedRoute>
   );
 };
 
