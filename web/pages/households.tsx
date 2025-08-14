@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { householdsApi } from '../lib/api';
 
 export default function Households() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -68,9 +70,20 @@ export default function Households() {
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <Link href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>
+            <button
+              onClick={() => router.push('/')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#6b7280',
+                textDecoration: 'none',
+                cursor: 'pointer',
+                fontSize: 'inherit',
+                padding: 0,
+              }}
+            >
               ← ダッシュボード
-            </Link>
+            </button>
             <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>
               世帯管理
             </h1>

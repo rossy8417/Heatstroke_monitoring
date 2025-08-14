@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import { auth } from '../lib/supabase';
 
 const RegisterPage: React.FC = () => {
@@ -450,17 +449,21 @@ const RegisterPage: React.FC = () => {
           }}>
             既にアカウントをお持ちの方は
           </p>
-          <Link href="/login">
-            <span style={{
+          <button
+            onClick={() => router.push('/login')}
+            style={{
+              background: 'none',
+              border: 'none',
               fontSize: '14px',
               color: '#3b82f6',
               textDecoration: 'none',
               fontWeight: '600',
               cursor: 'pointer',
-            }}>
-              ログイン
-            </span>
-          </Link>
+              padding: 0,
+            }}
+          >
+            ログイン
+          </button>
         </div>
       </div>
     </div>

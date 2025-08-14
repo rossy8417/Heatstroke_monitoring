@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { alertsApi, weatherApi } from '../../lib/api';
 
 /**
@@ -8,6 +8,7 @@ import { alertsApi, weatherApi } from '../../lib/api';
  * シンプルで見やすいUI
  */
 const PersonalDashboard: React.FC = () => {
+  const router = useRouter();
   // 自分の世帯のアラートのみ取得
   const { data: myAlert } = useQuery({
     queryKey: ['myAlert'],
@@ -294,16 +295,20 @@ const PersonalDashboard: React.FC = () => {
           marginTop: '30px',
           textAlign: 'center',
         }}>
-          <Link href="/personal/settings">
-            <span style={{
+          <button
+            onClick={() => router.push('/personal/settings')}
+            style={{
+              background: 'none',
+              border: 'none',
               color: '#3b82f6',
               fontSize: '14px',
               textDecoration: 'none',
               cursor: 'pointer',
-            }}>
-              設定・連絡先の変更 →
-            </span>
-          </Link>
+              padding: 0,
+            }}
+          >
+            設定・連絡先の変更 →
+          </button>
         </div>
       </main>
     </div>
