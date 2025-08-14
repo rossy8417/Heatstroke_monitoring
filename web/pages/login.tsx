@@ -148,14 +148,15 @@ const LoginPage: React.FC = () => {
             textAlign: 'right',
             marginBottom: '20px',
           }}>
-            <Link href="/forgot-password">
-              <a style={{
+            <Link 
+              href="/forgot-password"
+              style={{
                 fontSize: '14px',
                 color: '#3b82f6',
                 textDecoration: 'none',
-              }}>
-                パスワードを忘れた場合
-              </a>
+              }}
+            >
+              パスワードを忘れた場合
             </Link>
           </div>
 
@@ -214,15 +215,16 @@ const LoginPage: React.FC = () => {
           }}>
             アカウントをお持ちでない方は
           </p>
-          <Link href="/register">
-            <a style={{
+          <Link 
+            href="/register"
+            style={{
               fontSize: '14px',
               color: '#3b82f6',
               textDecoration: 'none',
               fontWeight: '600',
-            }}>
-              新規登録
-            </a>
+            }}
+          >
+            新規登録
           </Link>
         </div>
       </div>

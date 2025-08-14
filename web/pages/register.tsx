@@ -450,15 +450,16 @@ const RegisterPage: React.FC = () => {
           }}>
             既にアカウントをお持ちの方は
           </p>
-          <Link href="/login">
-            <a style={{
+          <Link 
+            href="/login"
+            style={{
               fontSize: '14px',
               color: '#3b82f6',
               textDecoration: 'none',
               fontWeight: '600',
-            }}>
-              ログイン
-            </a>
+            }}
+          >
+            ログイン
           </Link>
         </div>
       </div>
