@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { auth } from '../lib/supabase';
 
 const RegisterPage: React.FC = () => {
@@ -63,11 +64,6 @@ const RegisterPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLoginClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    router.push('/login');
   };
 
   return (
@@ -454,21 +450,17 @@ const RegisterPage: React.FC = () => {
           }}>
             既にアカウントをお持ちの方は
           </p>
-          <button
-            onClick={handleLoginClick}
-            style={{
-              background: 'none',
-              border: 'none',
+          <Link href="/login">
+            <span style={{
               fontSize: '14px',
               color: '#3b82f6',
               textDecoration: 'none',
               fontWeight: '600',
               cursor: 'pointer',
-              padding: '5px',
-            }}
-          >
-            ログイン
-          </button>
+            }}>
+              ログイン
+            </span>
+          </Link>
         </div>
       </div>
     </div>

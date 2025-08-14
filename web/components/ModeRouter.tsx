@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 
 // ユーザータイプの定義
 export type UserType = 'individual' | 'business' | 'community' | 'admin' | null;
@@ -139,9 +140,11 @@ export const ModeRouter: React.FC<{ children: React.ReactNode }> = ({ children }
           borderBottom: '1px solid #fbbf24',
         }}>
           無料プランをご利用中です。
-          <a href="/pricing" style={{ marginLeft: '10px', color: '#3b82f6' }}>
-            プランをアップグレード
-          </a>
+          <Link href="/pricing">
+            <span style={{ marginLeft: '10px', color: '#3b82f6', cursor: 'pointer' }}>
+              プランをアップグレード
+            </span>
+          </Link>
         </div>
       )}
       

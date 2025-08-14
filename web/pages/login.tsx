@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import { auth } from '../lib/supabase';
 
 const LoginPage: React.FC = () => {
@@ -148,16 +147,20 @@ const LoginPage: React.FC = () => {
             textAlign: 'right',
             marginBottom: '20px',
           }}>
-            <Link 
-              href="/forgot-password"
+            <button
+              onClick={() => router.push('/forgot-password')}
               style={{
+                background: 'none',
+                border: 'none',
                 fontSize: '14px',
                 color: '#3b82f6',
                 textDecoration: 'none',
+                cursor: 'pointer',
+                padding: 0,
               }}
             >
               パスワードを忘れた場合
-            </Link>
+            </button>
           </div>
 
           {/* ログインボタン */}
@@ -215,17 +218,21 @@ const LoginPage: React.FC = () => {
           }}>
             アカウントをお持ちでない方は
           </p>
-          <Link 
-            href="/register"
+          <button
+            onClick={() => router.push('/register')}
             style={{
+              background: 'none',
+              border: 'none',
               fontSize: '14px',
               color: '#3b82f6',
               textDecoration: 'none',
               fontWeight: '600',
+              cursor: 'pointer',
+              padding: '5px',
             }}
           >
             新規登録
-          </Link>
+          </button>
         </div>
       </div>
     </div>

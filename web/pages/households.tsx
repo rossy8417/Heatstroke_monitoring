@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import Link from 'next/link';
 import { householdsApi } from '../lib/api';
 
 export default function Households() {

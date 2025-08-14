@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { alertsApi, weatherApi } from '../lib/api';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 export default function Dashboard() {
+  const router = useRouter();
   const { data: summary } = useQuery({
     queryKey: ['alertsSummary'],
     queryFn: alertsApi.getSummary,
@@ -202,42 +203,54 @@ export default function Dashboard() {
               クイックアクセス
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <Link href="/alerts" style={{
-                padding: '12px 16px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                textAlign: 'center',
-                fontWeight: '500',
-                transition: 'background-color 0.2s',
-              }}>
+              <button
+                onClick={() => router.push('/alerts')}
+                style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '6px',
+                  border: 'none',
+                  textAlign: 'center',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+              >
                 アラート一覧
-              </Link>
-              <Link href="/households" style={{
-                padding: '12px 16px',
-                backgroundColor: '#10b981',
-                color: 'white',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                textAlign: 'center',
-                fontWeight: '500',
-                transition: 'background-color 0.2s',
-              }}>
+              </button>
+              <button
+                onClick={() => router.push('/households')}
+                style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  borderRadius: '6px',
+                  border: 'none',
+                  textAlign: 'center',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+              >
                 世帯管理
-              </Link>
-              <Link href="/reports" style={{
-                padding: '12px 16px',
-                backgroundColor: '#6b7280',
-                color: 'white',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                textAlign: 'center',
-                fontWeight: '500',
-                transition: 'background-color 0.2s',
-              }}>
+              </button>
+              <button
+                onClick={() => router.push('/reports')}
+                style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  borderRadius: '6px',
+                  border: 'none',
+                  textAlign: 'center',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+              >
                 レポート
-              </Link>
+              </button>
             </div>
           </div>
         </div>

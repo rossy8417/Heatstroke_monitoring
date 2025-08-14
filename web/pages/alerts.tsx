@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import Link from 'next/link';
 import { alertsApi } from '../lib/api';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';

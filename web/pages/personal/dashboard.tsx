@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
 import { alertsApi, weatherApi } from '../../lib/api';
 
 /**
@@ -293,13 +294,16 @@ const PersonalDashboard: React.FC = () => {
           marginTop: '30px',
           textAlign: 'center',
         }}>
-          <a href="/personal/settings" style={{
-            color: '#3b82f6',
-            fontSize: '14px',
-            textDecoration: 'none',
-          }}>
-            設定・連絡先の変更 →
-          </a>
+          <Link href="/personal/settings">
+            <span style={{
+              color: '#3b82f6',
+              fontSize: '14px',
+              textDecoration: 'none',
+              cursor: 'pointer',
+            }}>
+              設定・連絡先の変更 →
+            </span>
+          </Link>
         </div>
       </main>
     </div>
