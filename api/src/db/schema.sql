@@ -153,16 +153,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 各テーブルにトリガーを設定
+-- 既存のトリガーがあれば削除してから作成（冪等化）
+DROP TRIGGER IF EXISTS update_tenants_updated_at ON tenants;
 CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS update_households_updated_at ON households;
 CREATE TRIGGER update_households_updated_at BEFORE UPDATE ON households
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS update_contacts_updated_at ON contacts;
 CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON contacts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS update_alerts_updated_at ON alerts;
 CREATE TRIGGER update_alerts_updated_at BEFORE UPDATE ON alerts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
@@ -189,10 +193,25 @@ FROM alerts a
 WHERE a.date = CURRENT_DATE
 GROUP BY a.date;
 
--- ビュー：世帯詳細（連絡先含む）
-CREATE OR REPLACE VIEW household_details AS
-SELECT 
-  h.*,
+-- 既存ビューを削除してから安定列で再作成（SELECT * を避ける）
+DROP VIEW IF EXISTS household_details;
+CREATE VIEW household_details AS
+SELECT
+  h.id,
+  h.tenant_id,
+  h.name,
+  h.phone,
+  h.address_grid,
+  h.address_text,
+  h.latitude,
+  h.longitude,
+  h.risk_flag,
+  h.consent_at,
+  h.consent_document_id,
+  h.notes,
+  h.is_active,
+  h.created_at,
+  h.updated_at,
   COALESCE(
     json_agg(
       json_build_object(
@@ -206,8 +225,23 @@ SELECT
       ) ORDER BY c.priority
     ) FILTER (WHERE c.id IS NOT NULL),
     '[]'::json
-  ) as contacts
+  ) AS contacts
 FROM households h
 LEFT JOIN contacts c ON h.id = c.household_id AND c.is_active = true
 WHERE h.is_active = true
-GROUP BY h.id;
+GROUP BY
+  h.id,
+  h.tenant_id,
+  h.name,
+  h.phone,
+  h.address_grid,
+  h.address_text,
+  h.latitude,
+  h.longitude,
+  h.risk_flag,
+  h.consent_at,
+  h.consent_document_id,
+  h.notes,
+  h.is_active,
+  h.created_at,
+  h.updated_at;

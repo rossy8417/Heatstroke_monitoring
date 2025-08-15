@@ -19,6 +19,23 @@ DROP POLICY IF EXISTS "Enable read for anon" ON call_logs;
 DROP POLICY IF EXISTS "Enable read for anon" ON notifications;
 DROP POLICY IF EXISTS "Enable read for anon" ON audit_logs;
 
+-- 追加：開発用anonポリシーの重複を除去
+DROP POLICY IF EXISTS "Enable insert for anon" ON households;
+DROP POLICY IF EXISTS "Enable update for anon" ON households;
+DROP POLICY IF EXISTS "Enable delete for anon" ON households;
+
+DROP POLICY IF EXISTS "Enable insert for anon" ON alerts;
+DROP POLICY IF EXISTS "Enable update for anon" ON alerts;
+
+DROP POLICY IF EXISTS "Enable insert for anon" ON contacts;
+DROP POLICY IF EXISTS "Enable update for anon" ON contacts;
+DROP POLICY IF EXISTS "Enable delete for anon" ON contacts;
+
+DROP POLICY IF EXISTS "Enable insert for anon" ON call_logs;
+
+DROP POLICY IF EXISTS "Enable insert for anon" ON notifications;
+DROP POLICY IF EXISTS "Enable update for anon" ON notifications;
+
 -- RLSを有効化
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE households ENABLE ROW LEVEL SECURITY;

@@ -1,30 +1,6 @@
 -- Stripe連携用の簡易スキーマ（MVP）
 
--- サブスクリプション
-CREATE TABLE IF NOT EXISTS user_subscriptions (
-  user_id uuid PRIMARY KEY,
-  plan_id text NOT NULL,
-  stripe_customer_id text,
-  stripe_subscription_id text,
-  status text DEFAULT 'inactive',
-  current_period_start timestamptz,
-  current_period_end timestamptz,
-  canceled_at timestamptz,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
--- 支払い履歴
-CREATE TABLE IF NOT EXISTS payment_history (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid NOT NULL,
-  stripe_invoice_id text,
-  amount bigint,
-  currency text,
-  status text,
-  paid_at timestamptz,
-  created_at timestamptz DEFAULT now()
-);
+-- ここから下に包括的なスキーマ定義があるため、上記の簡易版テーブル作成は削除しました（重複回避）
 
 -- =========================================
 -- 認証・サブスクリプション関連のスキーマ更新
@@ -137,36 +113,44 @@ CREATE INDEX IF NOT EXISTS idx_usage_tracking_user_period ON usage_tracking(user
 -- user_profiles
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own profile" ON user_profiles;
 CREATE POLICY "Users can view own profile" ON user_profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
 CREATE POLICY "Users can update own profile" ON user_profiles
   FOR UPDATE USING (auth.uid() = id);
 
 -- user_subscriptions
 ALTER TABLE user_subscriptions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own subscription" ON user_subscriptions;
 CREATE POLICY "Users can view own subscription" ON user_subscriptions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service role can manage subscriptions" ON user_subscriptions;
 CREATE POLICY "Service role can manage subscriptions" ON user_subscriptions
   FOR ALL USING (auth.role() = 'service_role');
 
 -- payment_history
 ALTER TABLE payment_history ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own payment history" ON payment_history;
 CREATE POLICY "Users can view own payment history" ON payment_history
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service role can manage payments" ON payment_history;
 CREATE POLICY "Service role can manage payments" ON payment_history
   FOR ALL USING (auth.role() = 'service_role');
 
 -- usage_tracking
 ALTER TABLE usage_tracking ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own usage" ON usage_tracking;
 CREATE POLICY "Users can view own usage" ON usage_tracking
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service role can manage usage" ON usage_tracking;
 CREATE POLICY "Service role can manage usage" ON usage_tracking
   FOR ALL USING (auth.role() = 'service_role');
 
@@ -184,15 +168,19 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 各テーブルにトリガーを設定
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
 CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_subscription_plans_updated_at ON subscription_plans;
 CREATE TRIGGER update_subscription_plans_updated_at BEFORE UPDATE ON subscription_plans
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_subscriptions_updated_at ON user_subscriptions;
 CREATE TRIGGER update_user_subscriptions_updated_at BEFORE UPDATE ON user_subscriptions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_usage_tracking_updated_at ON usage_tracking;
 CREATE TRIGGER update_usage_tracking_updated_at BEFORE UPDATE ON usage_tracking
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
