@@ -10,6 +10,7 @@ import { validateEnv, getConfig } from './utils/envValidator.js';
 import { dataStore } from './services/dataStore.js';
 import { weatherService } from './services/weatherService.js';
 import apiRoutes from './routes/apiRoutes.js';
+import twilioRoutes from './routes/twilioRoutes.js';
 
 const envValidation = validateEnv();
 if (envValidation.warnings.length > 0) {
@@ -72,6 +73,9 @@ app.use(express.json());
 
 // 実データAPI
 app.use('/api', apiRoutes);
+
+// Twilio Webhooks / IVR
+app.use('/webhooks/twilio', twilioRoutes);
 
 const lineTemplates = {
   family_unanswered: ({ name, phone }) => ({

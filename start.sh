@@ -19,6 +19,13 @@ echo "APIサーバー PID: $API_PID"
 # 少し待機
 sleep 3
 
+# ワーカー（スケジューラ）を起動
+echo "ワーカープロセス（スケジューラ）を起動中..."
+cd ../api
+npm run worker:dev &
+WORKER_PID=$!
+echo "Worker PID: $WORKER_PID"
+
 # UIを起動
 echo "UIを起動中..."
 cd ../web
@@ -36,7 +43,7 @@ echo ""
 echo "停止するには Ctrl+C を押してください"
 
 # 終了処理
-trap "echo '停止中...'; kill $API_PID $UI_PID 2>/dev/null; exit" INT
+trap "echo '停止中...'; kill $API_PID $UI_PID $WORKER_PID 2>/dev/null; exit" INT
 
 # プロセスを待機
 wait

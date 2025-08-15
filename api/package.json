@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=.env --watch src/server.js",
-    "start": "node --env-file=.env src/server.js",
+    "dev": "node --env-file=.env --watch src/server-improved.js",
+    "start": "node --env-file=.env src/server-improved.js",
     "worker": "node --env-file=.env src/worker.js",
     "worker:dev": "node --env-file=.env --watch src/worker.js",
     "selftest": "node src/selftest.js",
