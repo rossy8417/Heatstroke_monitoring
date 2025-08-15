@@ -1,12 +1,24 @@
 export function validateEnv() {
-  const required = [];
+  const required = [
+    // Supabase (バックエンド書き込み用はSERVICE_KEYも推奨)
+    'SUPABASE_URL',
+    'SUPABASE_ANON_KEY',
+    // Webhook検証や連携に必要
+    // 'WEBHOOK_SECRET' は開発で省略可
+  ];
   const optional = [
     'PORT',
     'WEBHOOK_SECRET',
     'LINE_CHANNEL_ACCESS_TOKEN',
     'LINE_CHANNEL_SECRET',
     'LINE_CHANNEL_ID',
-    'LOG_LEVEL'
+    'LOG_LEVEL',
+    'TWILIO_ACCOUNT_SID',
+    'TWILIO_AUTH_TOKEN',
+    'TWILIO_PHONE_NUMBER',
+    'TWILIO_WEBHOOK_URL',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET'
   ];
 
   const missing = required.filter(key => !process.env[key]);
@@ -27,6 +39,12 @@ export function validateEnv() {
   
   if (!process.env.WEBHOOK_SECRET) {
     warnings.push('WEBHOOK_SECRET not set - webhook signatures will not be verified');
+  }
+  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
+    warnings.push('Twilio not fully configured - falling back to stub for calls/SMS');
+  }
+  if (!process.env.STRIPE_SECRET_KEY) {
+    warnings.push('STRIPE_SECRET_KEY not set - billing APIs will not work');
   }
 
   return {

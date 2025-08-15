@@ -145,7 +145,7 @@ export class EscalationJob {
       }
 
       // メタデータを更新
-      await this.updateAlertMetadata(alert.id, { 
+      await supabaseDataStore.updateAlertMetadata(alert.id, { 
         familyNotified: true,
         familyNotifiedAt: new Date().toISOString()
       });
@@ -173,7 +173,7 @@ export class EscalationJob {
       }
 
       // メタデータとステータスを更新
-      await this.updateAlertMetadata(alert.id, { 
+      await supabaseDataStore.updateAlertMetadata(alert.id, { 
         neighborNotified: true,
         neighborNotifiedAt: new Date().toISOString()
       });
@@ -213,23 +213,7 @@ export class EscalationJob {
     logger.info('LINE notification would be sent', { lineUserId, data });
   }
 
-  async updateAlertMetadata(alertId, metadata) {
-    try {
-      const { data: alert } = await supabaseDataStore.getAlert(alertId);
-      
-      if (alert) {
-        const updatedMetadata = {
-          ...alert.metadata,
-          ...metadata
-        };
-        
-        // Note: Supabaseのupdateメソッドにmetadata更新を追加する必要があります
-        logger.info('Alert metadata updated', { alertId, metadata });
-      }
-    } catch (error) {
-      logger.error('Failed to update alert metadata', { error: error.message });
-    }
-  }
+  // updateAlertMetadata: supabaseDataStore側に実装
 
   getStatus() {
     return {

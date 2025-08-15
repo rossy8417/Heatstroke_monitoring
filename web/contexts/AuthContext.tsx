@@ -72,12 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // ユーザータイプに応じてリダイレクト
       const userType = data.user?.user_metadata?.user_type || 'individual';
-      
-      if (userType === 'individual') {
-        await router.push('/personal/dashboard');
-      } else {
-        await router.push('/dashboard');
-      }
+      await router.push(userType === 'individual' ? '/personal/dashboard' : '/alerts');
 
       return { error: null };
     } catch (error) {

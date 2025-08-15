@@ -223,6 +223,28 @@ class SupabaseDataStore {
     return { data, error: handleSupabaseError(error) };
   }
 
+  async updateAlertMetadata(id, metadataUpdates) {
+    if (this.useInMemory) {
+      const alert = this.memoryStore.alerts.get(id);
+      if (!alert) return { data: null, error: { message: 'Not found' } };
+      const merged = { ...(alert.metadata || {}), ...(metadataUpdates || {}) };
+      alert.metadata = merged;
+      alert.updated_at = new Date().toISOString();
+      return { data: alert, error: null };
+    }
+
+    // Supabase: metadataマージ（Postgresのjsonb || 演算子を使うか、アプリ側でマージ）
+    const { data: current } = await this.getAlert(id);
+    const merged = { ...(current?.metadata || {}), ...(metadataUpdates || {}) };
+    const { data, error } = await supabaseAdmin
+      .from('alerts')
+      .update({ metadata: merged })
+      .eq('id', id)
+      .select()
+      .single();
+    return { data, error: handleSupabaseError(error) };
+  }
+
   async updateAlertStatus(id, status, actor = 'system') {
     if (this.useInMemory) {
       const alert = this.memoryStore.alerts.get(id);

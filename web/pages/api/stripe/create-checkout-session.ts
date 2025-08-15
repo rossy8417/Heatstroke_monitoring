@@ -46,8 +46,7 @@ export default async function handler(
       // 顧客情報の収集
       customer_email: req.body.email,
       billing_address_collection: 'required',
-      // 日本円の設定
-      currency: 'jpy',
+      // 通貨はPriceに紐づく（Price側でJPYを設定）
       // トライアル期間（オプション）
       subscription_data: {
         trial_period_days: 14, // 14日間の無料トライアル
