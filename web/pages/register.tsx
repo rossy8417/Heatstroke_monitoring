@@ -1,11 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { auth } from '../lib/supabase';
+import { getPlanById } from '../lib/subscription-plans';
 
 const RegisterPage: React.FC = () => {
   const router = useRouter();
-  const [step, setStep] = useState(1); // 1: ユーザータイプ選択, 2: 情報入力
-  const [userType, setUserType] = useState<'individual' | 'business' | 'community'>('individual');
+  const { plan: planId } = router.query;
+  
+  // プラン情報を取得
+  const selectedPlan = planId ? getPlanById(planId as string) : null;
+  
+  // プランに基づいてユーザータイプを自動設定
+  const getDefaultUserType = () => {
+    if (!selectedPlan) return 'individual';
+    return selectedPlan.userType;
+  };
+  
+  const [step, setStep] = useState(1); // 1: ユーザータイプ選択/確認, 2: 情報入力
+  const [userType, setUserType] = useState<'individual' | 'business' | 'community'>(getDefaultUserType());
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -16,6 +28,17 @@ const RegisterPage: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // プランが変更されたらユーザータイプを更新
+  useEffect(() => {
+    if (selectedPlan) {
+      setUserType(selectedPlan.userType);
+      // 個人向けプランの場合は直接ステップ2へ
+      if (selectedPlan.userType === 'individual') {
+        setStep(2);
+      }
+    }
+  }, [selectedPlan]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +66,7 @@ const RegisterPage: React.FC = () => {
           phone: formData.phone,
           user_type: userType,
           organization_name: userType !== 'individual' ? formData.organizationName : null,
+          selected_plan: planId || 'free',
         }
       );
 
@@ -57,7 +81,13 @@ const RegisterPage: React.FC = () => {
 
       // 登録成功
       alert('確認メールを送信しました。メールを確認してアカウントを有効化してください。');
-      router.push('/login');
+      
+      // 有料プランの場合は決済ページへ
+      if (selectedPlan && selectedPlan.stripePriceId) {
+        router.push(`/checkout?plan=${planId}`);
+      } else {
+        router.push('/login');
+      }
     } catch (err) {
       setError('登録に失敗しました');
     } finally {
@@ -87,6 +117,41 @@ const RegisterPage: React.FC = () => {
         width: '100%',
         maxWidth: '500px',
       }}>
+        {/* プラン情報表示 */}
+        {selectedPlan && (
+          <div style={{
+            backgroundColor: '#eff6ff',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '24px',
+            borderLeft: '4px solid #3b82f6',
+          }}>
+            <div style={{
+              fontSize: '14px',
+              color: '#1e40af',
+              fontWeight: '600',
+              marginBottom: '4px',
+            }}>
+              選択中のプラン
+            </div>
+            <div style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#1f2937',
+              marginBottom: '4px',
+            }}>
+              {selectedPlan.name}
+            </div>
+            <div style={{
+              fontSize: '14px',
+              color: '#6b7280',
+            }}>
+              {selectedPlan.price === 0 ? '無料' : `月額 ¥${selectedPlan.price.toLocaleString()}`}
+              {selectedPlan.userType === 'individual' && ` • 最大${selectedPlan.features.maxHouseholds}世帯まで`}
+            </div>
+          </div>
+        )}
+
         {/* タイトル */}
         <div style={{
           textAlign: 'center',
@@ -104,12 +169,14 @@ const RegisterPage: React.FC = () => {
             fontSize: '14px',
             color: '#6b7280',
           }}>
-            {step === 1 ? 'ご利用タイプを選択してください' : 'アカウント情報を入力してください'}
+            {step === 1 && !selectedPlan 
+              ? 'ご利用タイプを選択してください' 
+              : 'アカウント情報を入力してください'}
           </p>
         </div>
 
-        {/* ステップ1: ユーザータイプ選択 */}
-        {step === 1 && (
+        {/* ステップ1: ユーザータイプ選択（プラン未選択時のみ） */}
+        {step === 1 && !selectedPlan && (
           <div>
             <div style={{
               display: 'grid',
@@ -217,11 +284,34 @@ const RegisterPage: React.FC = () => {
             >
               次へ
             </button>
+
+            {/* プラン選択へのリンク */}
+            <div style={{
+              textAlign: 'center',
+              marginTop: '20px',
+              fontSize: '14px',
+              color: '#6b7280',
+            }}>
+              プランを選んでから登録したい方は
+              <button
+                onClick={() => router.push('/pricing')}
+                style={{
+                  color: '#3b82f6',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  marginLeft: '4px',
+                }}
+              >
+                料金プランページへ
+              </button>
+            </div>
           </div>
         )}
 
         {/* ステップ2: 情報入力 */}
-        {step === 2 && (
+        {(step === 2 || selectedPlan) && (
           <form onSubmit={handleRegister}>
             {/* エラーメッセージ */}
             {error && (
@@ -247,7 +337,7 @@ const RegisterPage: React.FC = () => {
                   fontWeight: '500',
                   color: '#374151',
                 }}>
-                  {userType === 'community' ? '団体名' : '事業者名'}
+                  {userType === 'community' ? '団体名' : '事業者名'} *
                 </label>
                 <input
                   type="text"
@@ -275,7 +365,7 @@ const RegisterPage: React.FC = () => {
                 fontWeight: '500',
                 color: '#374151',
               }}>
-                お名前
+                {userType === 'individual' ? 'お名前' : '担当者名'} *
               </label>
               <input
                 type="text"
@@ -302,7 +392,7 @@ const RegisterPage: React.FC = () => {
                 fontWeight: '500',
                 color: '#374151',
               }}>
-                メールアドレス
+                メールアドレス *
               </label>
               <input
                 type="email"
@@ -355,7 +445,7 @@ const RegisterPage: React.FC = () => {
                 fontWeight: '500',
                 color: '#374151',
               }}>
-                パスワード
+                パスワード *
               </label>
               <input
                 type="password"
@@ -383,13 +473,14 @@ const RegisterPage: React.FC = () => {
                 fontWeight: '500',
                 color: '#374151',
               }}>
-                パスワード（確認）
+                パスワード（確認） *
               </label>
               <input
                 type="password"
                 value={formData.confirmPassword}
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 required
+                minLength={6}
                 style={{
                   width: '100%',
                   padding: '10px',
@@ -401,13 +492,34 @@ const RegisterPage: React.FC = () => {
               />
             </div>
 
-            {/* ボタン */}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            {/* 登録ボタン */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px',
+                backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? '登録中...' : 
+                selectedPlan && selectedPlan.stripePriceId ? '登録して決済へ進む' : '登録する'}
+            </button>
+
+            {/* 戻るボタン（プラン未選択時のみ） */}
+            {!selectedPlan && step === 2 && (
               <button
                 type="button"
                 onClick={() => setStep(1)}
                 style={{
-                  flex: 1,
+                  width: '100%',
+                  marginTop: '12px',
                   padding: '12px',
                   backgroundColor: 'white',
                   color: '#6b7280',
@@ -420,51 +532,29 @@ const RegisterPage: React.FC = () => {
               >
                 戻る
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  flex: 2,
-                  padding: '12px',
-                  backgroundColor: loading ? '#9ca3af' : '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {loading ? '登録中...' : '登録する'}
-              </button>
-            </div>
+            )}
           </form>
         )}
 
         {/* ログインリンク */}
         <div style={{
-          textAlign: 'center',
           marginTop: '30px',
           paddingTop: '20px',
           borderTop: '1px solid #e5e7eb',
+          textAlign: 'center',
+          fontSize: '14px',
+          color: '#6b7280',
         }}>
-          <p style={{
-            fontSize: '14px',
-            color: '#6b7280',
-          }}>
-            既にアカウントをお持ちの方は
-          </p>
+          既にアカウントをお持ちの方は
           <button
             onClick={handleLoginClick}
             style={{
+              color: '#3b82f6',
               background: 'none',
               border: 'none',
-              fontSize: '14px',
-              color: '#3b82f6',
-              textDecoration: 'none',
-              fontWeight: '600',
               cursor: 'pointer',
-              padding: '5px',
+              textDecoration: 'underline',
+              marginLeft: '4px',
             }}
           >
             ログイン

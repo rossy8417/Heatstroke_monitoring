@@ -14,30 +14,9 @@ const BusinessPricingPage: React.FC = () => {
     plan => plan.userType === 'business' && plan.id !== 'enterprise'
   );
 
-  const handleSelectPlan = async (planId: string, stripePriceId?: string) => {
-    if (stripePriceId) {
-      try {
-        const response = await fetch('/api/stripe/create-checkout-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            priceId: stripePriceId,
-            planId: planId,
-          }),
-        });
-
-        const { sessionId, url } = await response.json();
-        
-        if (url) {
-          window.location.href = url;
-        }
-      } catch (error) {
-        console.error('Checkout error:', error);
-        alert('決済の開始に失敗しました。もう一度お試しください。');
-      }
-    }
+  const handleSelectPlan = (planId: string) => {
+    // プランIDを含めて登録ページへ遷移
+    router.push(`/register?plan=${planId}`);
   };
 
   const handleContact = () => {
@@ -246,7 +225,7 @@ const BusinessPricingPage: React.FC = () => {
               </ul>
 
               <button
-                onClick={() => handleSelectPlan(plan.id, plan.stripePriceId)}
+                onClick={() => handleSelectPlan(plan.id)}
                 style={{
                   width: '100%',
                   padding: '14px',
@@ -416,7 +395,7 @@ const BusinessPricingPage: React.FC = () => {
               </ul>
 
               <button
-                onClick={() => handleSelectPlan(plan.id, plan.stripePriceId)}
+                onClick={() => handleSelectPlan(plan.id)}
                 style={{
                   width: '100%',
                   padding: '14px',

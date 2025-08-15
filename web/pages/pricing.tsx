@@ -14,35 +14,9 @@ const PricingPage: React.FC = () => {
     plan => plan.id === 'free' || plan.id === 'personal' || plan.id === 'family'
   );
 
-  const handleSelectPlan = async (planId: string, stripePriceId?: string) => {
-    if (planId === 'free') {
-      // 無料プランは直接登録
-      router.push('/register?plan=free');
-    } else if (stripePriceId) {
-      // 有料プランはStripe決済へ
-      try {
-        const response = await fetch('/api/stripe/create-checkout-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            priceId: stripePriceId,
-            planId: planId,
-          }),
-        });
-
-        const { sessionId, url } = await response.json();
-        
-        if (url) {
-          // Stripe Checkoutへリダイレクト
-          window.location.href = url;
-        }
-      } catch (error) {
-        console.error('Checkout error:', error);
-        alert('決済の開始に失敗しました。もう一度お試しください。');
-      }
-    }
+  const handleSelectPlan = async (planId: string) => {
+    // プランIDを含めて登録ページへ遷移
+    router.push(`/register?plan=${planId}`);
   };
 
   return (
@@ -285,7 +259,7 @@ const PricingPage: React.FC = () => {
 
               {/* CTAボタン */}
               <button
-                onClick={() => handleSelectPlan(plan.id, plan.stripePriceId)}
+                onClick={() => handleSelectPlan(plan.id)}
                 style={{
                   width: '100%',
                   padding: '16px',
