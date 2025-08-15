@@ -1,6 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { ProtectedRoute } from '../components/ProtectedRoute';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/router';
 import { alertsApi } from '../lib/api';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { ProtectedRoute } from '../components/ProtectedRoute';
 
 export default function AlertsPage() {
   return (
@@ -11,77 +15,10 @@ export default function AlertsPage() {
 }
 
 function AlertsContent() {
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>({});
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await alertsApi.getToday();
-        setAlerts(data);
-        const sum = await alertsApi.getSummary();
-        setSummary(sum);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  if (loading) return <div style={{ padding: 24 }}>読み込み中...</div>;
-
-  return (
-    <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>当日アラート</h1>
-      <div style={{ color: '#6b7280', marginBottom: 16 }}>
-        サマリー: ok {summary.ok ?? 0} / 未応答 {summary.unanswered ?? 0} / 疲れ {summary.tired ?? 0} / ヘルプ {summary.help ?? 0}
-      </div>
-      <div style={{ display: 'grid', gap: 12 }}>
-        {alerts.map((a) => (
-          <div key={a.id} style={{ background: 'white', padding: 16, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontWeight: 600 }}>{a.household?.name || a.household || a.household_id}</div>
-                <div style={{ color: '#6b7280', fontSize: 12 }}>WBGT {a.wbgt ?? '-'} / レベル {a.level}</div>
-              </div>
-              <div>
-                <StatusBadge status={a.status} />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const map: any = {
-    ok: { bg: '#d1fae5', fg: '#065f46', label: 'OK' },
-    unanswered: { bg: '#fee2e2', fg: '#991b1b', label: '未応答' },
-    tired: { bg: '#fef3c7', fg: '#92400e', label: '要注意' },
-    help: { bg: '#fde68a', fg: '#92400e', label: 'ヘルプ' },
-    escalated: { bg: '#e5e7eb', fg: '#374151', label: 'エスカレ' },
-    open: { bg: '#e0e7ff', fg: '#3730a3', label: '未処理' },
-  };
-  const s = map[status] || { bg: '#e5e7eb', fg: '#374151', label: status };
-  return (
-    <span style={{ background: s.bg, color: s.fg, padding: '4px 8px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>{s.label}</span>
-  );
-}
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { useRouter } from 'next/router';
-import { alertsApi } from '../lib/api';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
-import { ProtectedRoute } from '../components/ProtectedRoute';
-
-function AlertsContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState<string | null>(null);
+  const [processingAlerts, setProcessingAlerts] = useState<Set<string>>(new Set());
 
   const { data: alerts, isLoading } = useQuery({
     queryKey: ['todayAlerts'],
@@ -95,331 +32,371 @@ function AlertsContent() {
     refetchInterval: 30000,
   });
 
+  // 再コールミューテーション
   const retryMutation = useMutation({
     mutationFn: alertsApi.retry,
-    onSuccess: (data) => {
-      setMessage(`再コールを送信しました`);
+    onMutate: (alertId) => {
+      setProcessingAlerts(prev => new Set(prev).add(alertId));
+    },
+    onSuccess: (data, alertId) => {
+      setMessage('再コールを開始しました');
       queryClient.invalidateQueries({ queryKey: ['todayAlerts'] });
       queryClient.invalidateQueries({ queryKey: ['alertsSummary'] });
+      setTimeout(() => setMessage(null), 3000);
     },
-    onError: (error: any) => {
-      setMessage(`エラー: ${error.message || 'unknown'}`);
+    onError: (error, alertId) => {
+      setMessage('再コールに失敗しました');
+      console.error('Retry failed:', error);
+      setTimeout(() => setMessage(null), 3000);
     },
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) => alertsApi.updateStatus(id, status),
-    onSuccess: (data, variables) => {
-      if (variables.status === 'in_progress') {
-        setMessage('対応中を記録しました');
-      } else if (variables.status === 'completed') {
-        setMessage('完了を記録しました');
-      }
-      queryClient.invalidateQueries({ queryKey: ['todayAlerts'] });
-      queryClient.invalidateQueries({ queryKey: ['alertsSummary'] });
-    },
-    onError: (error: any) => {
-      setMessage(`エラー: ${error.message || 'unknown'}`);
-    },
-  });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ok': return { bg: '#d1fae5', color: '#065f46' };
-      case 'unanswered': return { bg: '#fee2e2', color: '#991b1b' };
-      case 'tired': return { bg: '#fed7aa', color: '#92400e' };
-      case 'help': return { bg: '#ddd6fe', color: '#5b21b6' };
-      case 'escalated': return { bg: '#fce7f3', color: '#831843' };
-      default: return { bg: '#f3f4f6', color: '#374151' };
+    onSettled: (data, error, alertId) => {
+      setProcessingAlerts(prev => {
+        const next = new Set(prev);
+        next.delete(alertId);
+        return next;
+      });
     }
+  });
+
+  // ステータス更新ミューテーション
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ alertId, status }: { alertId: string; status: string }) => 
+      alertsApi.updateStatus(alertId, status),
+    onMutate: ({ alertId }) => {
+      setProcessingAlerts(prev => new Set(prev).add(alertId));
+    },
+    onSuccess: (data, { alertId, status }) => {
+      setMessage(`ステータスを「${getStatusLabel(status)}」に更新しました`);
+      queryClient.invalidateQueries({ queryKey: ['todayAlerts'] });
+      queryClient.invalidateQueries({ queryKey: ['alertsSummary'] });
+      setTimeout(() => setMessage(null), 3000);
+    },
+    onError: (error, { alertId }) => {
+      setMessage('ステータス更新に失敗しました');
+      console.error('Status update failed:', error);
+      setTimeout(() => setMessage(null), 3000);
+    },
+    onSettled: (data, error, { alertId }) => {
+      setProcessingAlerts(prev => {
+        const next = new Set(prev);
+        next.delete(alertId);
+        return next;
+      });
+    }
+  });
+
+  const handleRetry = (alertId: string) => {
+    retryMutation.mutate(alertId);
+  };
+
+  const handleStatusUpdate = (alertId: string, status: string) => {
+    updateStatusMutation.mutate({ alertId, status });
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'ok': return 'OK';
-      case 'unanswered': return '未応答';
-      case 'tired': return '疲れ';
-      case 'help': return '要支援';
-      case 'escalated': return 'エスカレーション';
-      case 'open': return '確認中';
-      case 'in_progress': return '未応答'; // in_progressは本来statusではないので、未応答として扱う
-      default: return status;
-    }
+    const labels: Record<string, string> = {
+      ok: 'OK',
+      in_progress: '対応中',
+      completed: '完了',
+      escalated: 'エスカレーション済み',
+    };
+    return labels[status] || status;
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '20px', height: '20px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          読み込み中...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#f9fafb',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      padding: '24px',
     }}>
       {/* ヘッダー */}
-      <header style={{
+      <div style={{
         backgroundColor: 'white',
-        borderBottom: '1px solid #e5e7eb',
-        padding: '16px 24px',
+        borderRadius: '12px',
+        padding: '24px',
+        marginBottom: '24px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <button
-              onClick={() => router.push('/')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#6b7280',
-                textDecoration: 'none',
-                cursor: 'pointer',
-                fontSize: 'inherit',
-                padding: 0,
-              }}
-            >
-              ← ダッシュボード
-            </button>
-            <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>
-              本日のアラート一覧
-            </h1>
-          </div>
-        </div>
-      </header>
-
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-        {message && (
-          <div style={{
-            backgroundColor: '#eef7ff',
-            border: '1px solid #b6dbff',
-            padding: '12px 16px',
-            marginBottom: '24px',
-            borderRadius: '6px',
-          }}>
-            {message}
-          </div>
-        )}
-
-        {/* KPIカード */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            borderLeft: '4px solid #10b981',
-          }}>
-            <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>OK</div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#10b981' }}>{summary?.ok || 0}</div>
-          </div>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            borderLeft: '4px solid #ef4444',
-          }}>
-            <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>未応答</div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#ef4444' }}>{summary?.unanswered || 0}</div>
-          </div>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            borderLeft: '4px solid #f59e0b',
-          }}>
-            <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>疲れ</div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#f59e0b' }}>{summary?.tired || 0}</div>
-          </div>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            borderLeft: '4px solid #8b5cf6',
-          }}>
-            <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>要支援</div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#8b5cf6' }}>{summary?.help || 0}</div>
-          </div>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            borderLeft: '4px solid #ec4899',
-          }}>
-            <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>エスカレーション</div>
-            <div style={{ fontSize: '28px', fontWeight: '700', color: '#ec4899' }}>{summary?.escalated || 0}</div>
-          </div>
-        </div>
-
-        {/* アラートリスト */}
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        <h1 style={{
+          fontSize: '28px',
+          fontWeight: 'bold',
+          color: '#1f2937',
+          marginBottom: '16px',
         }}>
-          {isLoading ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-              読み込み中...
+          本日のアラート状況
+        </h1>
+        
+        {/* サマリー */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          gap: '16px',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>
+              {summary?.ok || 0}
             </div>
-          ) : alerts && alerts.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600' }}>時刻</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600' }}>世帯名</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600' }}>電話番号</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600' }}>ステータス</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600' }}>WBGT</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600' }}>レベル</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600' }}>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {alerts.map((alert: any) => {
-                    const statusStyle = getStatusColor(alert.status);
-                    const alertTime = new Date(alert.first_trigger_at || alert.created_at);
-                    const minutesAgo = Math.floor((Date.now() - alertTime.getTime()) / 60000);
-                    
-                    return (
-                      <tr key={alert.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>
-                          {alertTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            {minutesAgo}分前
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '14px', fontWeight: '500' }}>
-                          {alert.household?.name || '不明'}
-                          {alert.household?.risk_flag && (
-                            <span style={{
-                              marginLeft: '8px',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              backgroundColor: '#fee2e2',
-                              color: '#991b1b',
-                            }}>
-                              高リスク
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>
-                          {alert.household?.phone || '-'}
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            backgroundColor: statusStyle.bg,
-                            color: statusStyle.color,
-                          }}>
-                            {getStatusLabel(alert.status)}
-                          </span>
-                          {alert.in_progress && (
-                            <span style={{
-                              marginLeft: '8px',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              backgroundColor: '#fff5da',
-                              border: '1px solid #ffd26e',
-                              color: '#8a6d1b',
-                            }}>
-                              対応中
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>
-                          {alert.wbgt}
-                        </td>
-                        <td style={{ padding: '12px', fontSize: '14px' }}>
-                          <span style={{
-                            color: alert.level === '危険' ? '#ef4444' :
-                                   alert.level === '厳重警戒' ? '#f59e0b' :
-                                   alert.level === '警戒' ? '#eab308' : '#10b981',
-                            fontWeight: '500',
-                          }}>
-                            {alert.level}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            {alert.status === 'unanswered' && (
-                              <button
-                                onClick={() => retryMutation.mutate(alert.id)}
-                                disabled={retryMutation.isPending}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: '#3b82f6',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  cursor: 'pointer',
-                                  opacity: retryMutation.isPending ? 0.5 : 1,
-                                }}
-                              >
-                                再コール
-                              </button>
-                            )}
-                            {!alert.in_progress && alert.status !== 'ok' && alert.status !== 'escalated' && (
-                              <button
-                                onClick={() => updateStatusMutation.mutate({ id: alert.id, status: 'in_progress' })}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: '#f59e0b',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                対応中
-                              </button>
-                            )}
-                            {alert.in_progress && (
-                              <button
-                                onClick={() => updateStatusMutation.mutate({ id: alert.id, status: 'ok' })}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: '#10b981',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                完了
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>OK</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444' }}>
+              {summary?.unanswered || 0}
             </div>
-          ) : (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
-              本日のアラートはまだありません
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>未応答</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>
+              {summary?.tired || 0}
             </div>
-          )}
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>要注意</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#8b5cf6' }}>
+              {summary?.help || 0}
+            </div>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>ヘルプ</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#6366f1' }}>
+              {summary?.open || 0}
+            </div>
+            <div style={{ fontSize: '14px', color: '#6b7280' }}>未処理</div>
+          </div>
         </div>
       </div>
+
+      {/* メッセージ */}
+      {message && (
+        <div style={{
+          backgroundColor: '#dbeafe',
+          color: '#1e40af',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}>
+          <span>ℹ️</span>
+          {message}
+        </div>
+      )}
+
+      {/* アラートリスト */}
+      <div style={{
+        display: 'grid',
+        gap: '16px',
+      }}>
+        {alerts && alerts.length > 0 ? (
+          alerts.map((alert: any) => (
+            <div
+              key={alert.id}
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '20px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                opacity: processingAlerts.has(alert.id) ? 0.6 : 1,
+                transition: 'opacity 0.2s',
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'start',
+                marginBottom: '12px',
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    marginBottom: '4px',
+                  }}>
+                    {alert.household?.name || alert.household_name || 'Unknown'}
+                  </h3>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#6b7280',
+                  }}>
+                    {alert.created_at && format(new Date(alert.created_at), 'HH:mm', { locale: ja })}
+                    {' • '}
+                    WBGT: {alert.wbgt || '-'}°C
+                    {' • '}
+                    レベル: {alert.level || '-'}
+                  </div>
+                </div>
+                <StatusBadge status={alert.status} />
+              </div>
+
+              {/* メタデータ表示 */}
+              {alert.metadata && (
+                <div style={{
+                  fontSize: '13px',
+                  color: '#6b7280',
+                  marginBottom: '12px',
+                  backgroundColor: '#f9fafb',
+                  padding: '8px',
+                  borderRadius: '6px',
+                }}>
+                  {alert.metadata.attempts && (
+                    <div>試行回数: {alert.metadata.attempts}回</div>
+                  )}
+                  {alert.metadata.lastResponseCode && (
+                    <div>最終応答: {alert.metadata.lastResponseCode}</div>
+                  )}
+                  {alert.metadata.escalatedTo && (
+                    <div>エスカレーション先: {alert.metadata.escalatedTo.join(', ')}</div>
+                  )}
+                </div>
+              )}
+
+              {/* アクションボタン */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap',
+              }}>
+                {/* 再コールボタン（未応答・要注意の場合） */}
+                {(alert.status === 'unanswered' || alert.status === 'tired') && (
+                  <button
+                    onClick={() => handleRetry(alert.id)}
+                    disabled={processingAlerts.has(alert.id)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: processingAlerts.has(alert.id) ? 'not-allowed' : 'pointer',
+                      opacity: processingAlerts.has(alert.id) ? 0.5 : 1,
+                    }}
+                  >
+                    📞 再コール
+                  </button>
+                )}
+
+                {/* 対応中ボタン */}
+                {alert.status !== 'ok' && alert.status !== 'completed' && (
+                  <button
+                    onClick={() => handleStatusUpdate(alert.id, 'in_progress')}
+                    disabled={processingAlerts.has(alert.id)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: processingAlerts.has(alert.id) ? 'not-allowed' : 'pointer',
+                      opacity: processingAlerts.has(alert.id) ? 0.5 : 1,
+                    }}
+                  >
+                    ✅ 対応中にする
+                  </button>
+                )}
+
+                {/* 完了ボタン */}
+                {alert.status === 'in_progress' && (
+                  <button
+                    onClick={() => handleStatusUpdate(alert.id, 'completed')}
+                    disabled={processingAlerts.has(alert.id)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#6b7280',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: processingAlerts.has(alert.id) ? 'not-allowed' : 'pointer',
+                      opacity: processingAlerts.has(alert.id) ? 0.5 : 1,
+                    }}
+                  >
+                    ✓ 完了
+                  </button>
+                )}
+
+                {/* 詳細ボタン */}
+                <button
+                  onClick={() => router.push(`/alerts/${alert.id}`)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: 'white',
+                    color: '#6b7280',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                  }}
+                >
+                  詳細 →
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '40px',
+            textAlign: 'center',
+            color: '#6b7280',
+          }}>
+            本日のアラートはまだありません
+          </div>
+        )}
+      </div>
+
+      {/* スピナーアニメーション用のスタイル */}
+      <style jsx>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
 
-export default function AlertsPage() {
+function StatusBadge({ status }: { status: string }) {
+  const statusConfig: Record<string, { bg: string; fg: string; label: string }> = {
+    ok: { bg: '#d1fae5', fg: '#065f46', label: 'OK' },
+    unanswered: { bg: '#fee2e2', fg: '#991b1b', label: '未応答' },
+    tired: { bg: '#fef3c7', fg: '#92400e', label: '要注意' },
+    help: { bg: '#fde68a', fg: '#92400e', label: 'ヘルプ' },
+    escalated: { bg: '#e5e7eb', fg: '#374151', label: 'エスカレ済' },
+    open: { bg: '#e0e7ff', fg: '#3730a3', label: '未処理' },
+    in_progress: { bg: '#dcfce7', fg: '#166534', label: '対応中' },
+    completed: { bg: '#f3f4f6', fg: '#4b5563', label: '完了' },
+  };
+  
+  const config = statusConfig[status] || { bg: '#e5e7eb', fg: '#374151', label: status };
+  
   return (
-    <ProtectedRoute>
-      <AlertsContent />
-    </ProtectedRoute>
+    <span style={{
+      backgroundColor: config.bg,
+      color: config.fg,
+      padding: '6px 12px',
+      borderRadius: '999px',
+      fontSize: '12px',
+      fontWeight: '600',
+    }}>
+      {config.label}
+    </span>
   );
 }

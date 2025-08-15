@@ -28,6 +28,8 @@ class TwilioService {
    * @param {number} options.attempt - 試行回数
    */
   async makeCall({ to, alertId, householdName = '利用者', attempt = 1 }) {
+    const startTime = Date.now();
+    
     if (!this.isConfigured) {
       logger.warn('Twilio not configured - returning stub call');
       return {
@@ -46,6 +48,14 @@ class TwilioService {
       // Webhook URLが設定されている場合は、従来の方法を使用
       const twimlUrl = `${this.webhookUrl}/twiml?alertId=${encodeURIComponent(alertId)}&name=${encodeURIComponent(householdName)}&attempt=${encodeURIComponent(attempt)}`;
       
+      logger.info('Initiating Twilio call', {
+        to,
+        alertId,
+        attempt,
+        twimlUrl,
+        provider: 'twilio'
+      });
+      
       const call = await this.client.calls.create({
         to,
         from: this.phoneNumber,
@@ -58,11 +68,16 @@ class TwilioService {
         record: false // 録音はしない（プライバシー配慮）
       });
 
-      logger.info('Call initiated', {
+      const duration_ms = Date.now() - startTime;
+      
+      logger.info('Call initiated successfully', {
         callSid: call.sid,
         to,
         alertId,
-        attempt
+        attempt,
+        duration_ms,
+        provider: 'twilio',
+        status: 'success'
       });
 
       return {
@@ -71,10 +86,15 @@ class TwilioService {
         status: call.status
       };
     } catch (error) {
+      const duration_ms = Date.now() - startTime;
+      
       logger.error('Failed to make call', {
         error: error.message,
         to,
-        alertId
+        alertId,
+        duration_ms,
+        provider: 'twilio',
+        status: 'failed'
       });
 
       return {
@@ -92,6 +112,8 @@ class TwilioService {
    * @param {string} options.alertId - アラートID
    */
   async sendSms({ to, body, alertId }) {
+    const startTime = Date.now();
+    
     if (!this.isConfigured) {
       logger.warn('Twilio not configured - returning stub SMS');
       return {
@@ -102,6 +124,13 @@ class TwilioService {
     }
 
     try {
+      logger.info('Sending SMS', {
+        to,
+        alertId,
+        provider: 'twilio',
+        bodyLength: body.length
+      });
+      
       const message = await this.client.messages.create({
         to,
         from: this.phoneNumber,
@@ -109,10 +138,15 @@ class TwilioService {
         statusCallback: `${this.webhookUrl}/sms-status`
       });
 
-      logger.info('SMS sent', {
+      const duration_ms = Date.now() - startTime;
+      
+      logger.info('SMS sent successfully', {
         messageSid: message.sid,
         to,
-        alertId
+        alertId,
+        duration_ms,
+        provider: 'twilio',
+        status: 'success'
       });
 
       return {
@@ -121,10 +155,15 @@ class TwilioService {
         status: message.status
       };
     } catch (error) {
+      const duration_ms = Date.now() - startTime;
+      
       logger.error('Failed to send SMS', {
         error: error.message,
         to,
-        alertId
+        alertId,
+        duration_ms,
+        provider: 'twilio',
+        status: 'failed'
       });
 
       return {
