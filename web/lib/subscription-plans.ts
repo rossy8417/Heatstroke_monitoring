@@ -42,7 +42,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'パーソナル',
     description: '1世帯の充実した見守り',
     price: 500,
-    stripePriceId: 'price_personal_monthly',
+    stripePriceId: 'price_1RwCj5BAkas7NkkJLnBfhxQK',
     userType: 'individual',
     features: {
       maxHouseholds: 1,
@@ -60,7 +60,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'ファミリー',
     description: '最大3世帯まで見守り可能',
     price: 1200,
-    stripePriceId: 'price_family_monthly',
+    stripePriceId: 'price_1RwCkKBAkas7NkkJBvdETxe4',
     userType: 'individual',
     features: {
       maxHouseholds: 3,
@@ -80,7 +80,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'コミュニティベーシック',
     description: '小規模な地域見守り（〜10世帯）',
     price: 3000,
-    stripePriceId: 'price_community_basic_monthly',
+    stripePriceId: 'price_1RwCpPBAkas7NkkJrYpRDrSJ',
     userType: 'community',
     features: {
       maxHouseholds: 10,
@@ -98,7 +98,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'コミュニティスタンダード',
     description: '地域全体の見守り（〜20世帯）',
     price: 5000,
-    stripePriceId: 'price_community_standard_monthly',
+    stripePriceId: 'price_1RwCpoBAkas7NkkJWBn6U06u',
     userType: 'community',
     features: {
       maxHouseholds: 20,
@@ -118,7 +118,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'ビジネススターター',
     description: '小規模施設向け（〜30世帯）',
     price: 10000,
-    stripePriceId: 'price_business_starter_monthly',
+    stripePriceId: 'price_1RwCqXBAkas7NkkJpi3F73mx',
     userType: 'business',
     features: {
       maxHouseholds: 30,
@@ -136,7 +136,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     name: 'ビジネスプロ',
     description: '中規模施設向け（〜50世帯）',
     price: 20000,
-    stripePriceId: 'price_business_pro_monthly',
+    stripePriceId: 'price_1RwCqyBAkas7NkkJyffK83wn',
     userType: 'business',
     features: {
       maxHouseholds: 50,
