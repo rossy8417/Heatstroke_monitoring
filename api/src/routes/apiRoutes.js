@@ -234,18 +234,13 @@ router.post('/alerts/retry', async (req, res) => {
 
 // ================== 通話履歴 ==================
 
-// 特定アラートの通話履歴一覧（インメモリ対応）
+// 特定アラートの通話履歴一覧
 router.get('/calls/alert/:id', async (req, res) => {
   try {
     const alertId = req.params.id;
-    if (supabaseDataStore.useInMemory) {
-      const logs = Array.from(supabaseDataStore.memoryStore.callLogs.values()).filter(
-        (l) => l.alert_id === alertId || l.alertId === alertId
-      );
-      return res.json({ data: logs });
-    }
-    // TODO: Supabase実装（call_logsテーブルから取得）
-    return res.json({ data: [] });
+    const { data, error } = await supabaseDataStore.getCallLogsByAlert(alertId);
+    if (error) return res.status(500).json({ error: error.message || 'Failed to fetch call logs' });
+    return res.json({ data });
   } catch (error) {
     logger.error('Failed to get call logs by alert', { error: error.message });
     res.status(500).json({ error: 'Internal server error' });

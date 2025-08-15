@@ -340,6 +340,25 @@ class SupabaseDataStore {
     return { data: callLog, error: handleSupabaseError(error) };
   }
 
+  async getCallLogsByAlert(alertId) {
+    if (this.useInMemory) {
+      const logs = Array.from(this.memoryStore.callLogs.values()).filter(
+        (l) => l.alert_id === alertId || l.alertId === alertId
+      );
+      // 新しい順
+      logs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return { data: logs, error: null };
+    }
+
+    const { data, error } = await supabase
+      .from('call_logs')
+      .select('*')
+      .eq('alert_id', alertId)
+      .order('created_at', { ascending: false });
+
+    return { data: data || [], error: handleSupabaseError(error) };
+  }
+
   // ================== 通知記録 ==================
 
   async createNotification(data) {
