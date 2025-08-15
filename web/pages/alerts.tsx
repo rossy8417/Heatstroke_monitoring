@@ -1,3 +1,75 @@
+import React, { useEffect, useState } from 'react';
+import { ProtectedRoute } from '../components/ProtectedRoute';
+import { alertsApi } from '../lib/api';
+
+export default function AlertsPage() {
+  return (
+    <ProtectedRoute>
+      <AlertsContent />
+    </ProtectedRoute>
+  );
+}
+
+function AlertsContent() {
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await alertsApi.getToday();
+        setAlerts(data);
+        const sum = await alertsApi.getSummary();
+        setSummary(sum);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) return <div style={{ padding: 24 }}>読み込み中...</div>;
+
+  return (
+    <div style={{ padding: 24 }}>
+      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>当日アラート</h1>
+      <div style={{ color: '#6b7280', marginBottom: 16 }}>
+        サマリー: ok {summary.ok ?? 0} / 未応答 {summary.unanswered ?? 0} / 疲れ {summary.tired ?? 0} / ヘルプ {summary.help ?? 0}
+      </div>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {alerts.map((a) => (
+          <div key={a.id} style={{ background: 'white', padding: 16, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: 600 }}>{a.household?.name || a.household || a.household_id}</div>
+                <div style={{ color: '#6b7280', fontSize: 12 }}>WBGT {a.wbgt ?? '-'} / レベル {a.level}</div>
+              </div>
+              <div>
+                <StatusBadge status={a.status} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: any = {
+    ok: { bg: '#d1fae5', fg: '#065f46', label: 'OK' },
+    unanswered: { bg: '#fee2e2', fg: '#991b1b', label: '未応答' },
+    tired: { bg: '#fef3c7', fg: '#92400e', label: '要注意' },
+    help: { bg: '#fde68a', fg: '#92400e', label: 'ヘルプ' },
+    escalated: { bg: '#e5e7eb', fg: '#374151', label: 'エスカレ' },
+    open: { bg: '#e0e7ff', fg: '#3730a3', label: '未処理' },
+  };
+  const s = map[status] || { bg: '#e5e7eb', fg: '#374151', label: status };
+  return (
+    <span style={{ background: s.bg, color: s.fg, padding: '4px 8px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>{s.label}</span>
+  );
+}
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useRouter } from 'next/router';

@@ -1,3 +1,31 @@
+-- Stripe連携用の簡易スキーマ（MVP）
+
+-- サブスクリプション
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+  user_id uuid PRIMARY KEY,
+  plan_id text NOT NULL,
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  status text DEFAULT 'inactive',
+  current_period_start timestamptz,
+  current_period_end timestamptz,
+  canceled_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- 支払い履歴
+CREATE TABLE IF NOT EXISTS payment_history (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL,
+  stripe_invoice_id text,
+  amount bigint,
+  currency text,
+  status text,
+  paid_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+
 -- =========================================
 -- 認証・サブスクリプション関連のスキーマ更新
 -- =========================================

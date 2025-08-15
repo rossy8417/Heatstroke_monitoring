@@ -189,7 +189,11 @@ class SupabaseDataStore {
   async getAlert(id) {
     if (this.useInMemory) {
       const alert = this.memoryStore.alerts.get(id);
-      return { data: alert || null, error: alert ? null : { message: 'Not found' } };
+      if (!alert) return { data: null, error: { message: 'Not found' } };
+      const household = alert.household_id
+        ? this.memoryStore.households.get(alert.household_id)
+        : null;
+      return { data: { ...alert, household: household || null }, error: null };
     }
 
     const { data, error } = await supabase
