@@ -81,6 +81,7 @@ export class EscalationJob {
   }
 
   async makeSecondCall(household, alert) {
+    const startedAt = Date.now();
     logger.info(`Making second call to ${household.name}`);
     
     try {
@@ -91,6 +92,7 @@ export class EscalationJob {
         attempt: 2
       });
 
+      const duration_ms = Date.now() - startedAt;
       if (result.success) {
         // メタデータを更新
         await this.updateAlertMetadata(alert.id, { 
@@ -107,6 +109,9 @@ export class EscalationJob {
           result: 'pending',
           provider: 'twilio'
         });
+        logger.info('Second call initiated', { alertId: alert.id, callSid: result.callSid, duration_ms, provider: 'twilio' });
+      } else {
+        logger.error('Second call failed', { alertId: alert.id, duration_ms, provider: 'twilio', error: result.error });
       }
 
       // SMS送信
@@ -186,10 +191,11 @@ export class EscalationJob {
   }
 
   async sendReminderSMS(household, alert) {
+    const startedAt = Date.now();
     try {
       const message = `【再通知】熱中症予防の確認です。体調はいかがですか？折り返しお電話いたします。緊急の場合は119番へ。`;
       
-      await twilioService.sendSms({
+      const res = await twilioService.sendSms({
         to: household.phone,
         body: message,
         alertId: alert.id
@@ -202,6 +208,7 @@ export class EscalationJob {
         content: { message, type: 'reminder' },
         status: 'sent'
       });
+      logger.info('Reminder SMS sent', { alertId: alert.id, duration_ms: Date.now() - startedAt, provider: 'twilio', status: res?.status });
 
     } catch (error) {
       logger.error('Failed to send reminder SMS', { error: error.message });
