@@ -310,25 +310,88 @@ const PersonalDashboardContent: React.FC = () => {
           </div>
         </div>
 
-        {/* 設定リンク */}
+        {/* クイックリンク */}
         <div style={{
-          marginTop: '30px',
-          textAlign: 'center',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '20px',
+          marginTop: '20px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}>
-          <button
-            onClick={() => router.push('/personal/settings')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#3b82f6',
-              fontSize: '14px',
-              textDecoration: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            設定・連絡先の変更 →
-          </button>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
+            marginBottom: '15px',
+            color: '#1f2937',
+          }}>
+            🔗 クイックリンク
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '10px',
+          }}>
+            <button
+              onClick={() => router.push('/personal/profile')}
+              style={{
+                padding: '12px',
+                backgroundColor: '#f3f4f6',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              👤 プロフィール編集
+            </button>
+            <button
+              onClick={() => router.push('/personal/emergency-contacts')}
+              style={{
+                padding: '12px',
+                backgroundColor: '#f3f4f6',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              📞 緊急連絡先
+            </button>
+            <button
+              onClick={() => router.push('/account/subscription')}
+              style={{
+                padding: '12px',
+                backgroundColor: '#f3f4f6',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              💳 サブスクリプション
+            </button>
+            <button
+              onClick={() => router.push('/personal/settings')}
+              style={{
+                padding: '12px',
+                backgroundColor: '#f3f4f6',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                textAlign: 'center',
+              }}
+            >
+              ⚙️ 設定
+            </button>
+          </div>
         </div>
       </main>
     </div>
