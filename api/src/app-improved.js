@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import cors from 'cors';
 import { Client as LineClient, middleware as lineMiddleware } from '@line/bot-sdk';
-import { errorHandler, notFoundHandler, AppError, asyncHandler } from './middleware/errorHandler.js';
+import { errorHandler, notFoundHandler, AppError, asyncHandler, createError } from './middleware/errorHandlerUnified.js';
 import { logger } from './utils/logger.js';
 import { validateEnv, getConfig } from './utils/envValidator.js';
 import { dataStore } from './services/dataStore.js';
