@@ -6,7 +6,7 @@ import cors from 'cors';
 import { Client as LineClient, middleware as lineMiddleware } from '@line/bot-sdk';
 import { errorHandler, notFoundHandler, AppError, asyncHandler, createError } from './middleware/errorHandlerUnified.js';
 import { logger } from './utils/logger.js';
-import { validateEnv, getConfig } from './utils/envValidator.js';
+import { validateEnv, setDefaults } from './utils/validateEnv.js';
 import { dataStore } from './services/dataStore.js';
 import { weatherService } from './services/weatherServiceUnified.js';
 import apiRoutes from './routes/apiRoutes.js';
@@ -14,12 +14,14 @@ import twilioRoutes from './routes/twilioRoutes.js';
 import lineRoutes from './routes/lineRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 
+// デフォルト値を設定
+setDefaults();
+
+// 環境変数バリデーション
 const envValidation = validateEnv();
 if (envValidation.warnings.length > 0) {
   envValidation.warnings.forEach(w => logger.warn(w));
 }
-
-const config = getConfig();
 
 import { requestIdMiddleware } from './middleware/requestId.js';
 
@@ -31,12 +33,12 @@ app.use(requestIdMiddleware);
 app.use(morgan('dev'));
 app.use(cors());
 
-const lineClient = config.line.channelAccessToken 
-  ? new LineClient({ channelAccessToken: config.line.channelAccessToken }) 
+const lineClient = process.env.LINE_CHANNEL_ACCESS_TOKEN 
+  ? new LineClient({ channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN }) 
   : null;
 
-const lineWebhookMiddlewares = config.line.channelSecret 
-  ? [lineMiddleware({ channelSecret: config.line.channelSecret })] 
+const lineWebhookMiddlewares = process.env.LINE_CHANNEL_SECRET 
+  ? [lineMiddleware({ channelSecret: process.env.LINE_CHANNEL_SECRET })] 
   : [express.json()];
 
 app.get('/webhooks/line', (req, res) => res.status(200).send('OK'));
@@ -441,7 +443,7 @@ app.get('/_stub/sequence/:id', asyncHandler(async (req, res) => {
 }));
 
 function verifySignatureOptional(req, res, next) {
-  const secret = config.webhookSecret;
+  const secret = process.env.WEBHOOK_SECRET;
   if (!secret) return next();
   
   const sig = req.get('X-Signature');
