@@ -15,13 +15,18 @@ class WeatherServiceFixed {
    * 最新の気象データを取得（東京）
    */
   async getTokyoWeather() {
+    const startTime = Date.now();
     const cacheKey = 'tokyo_weather';
     
     // キャッシュチェック
     if (this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey);
       if (Date.now() - cached.timestamp < this.cacheTimeout) {
-        logger.info('Using cached weather data');
+        logger.info('Using cached weather data', {
+          duration_ms: Date.now() - startTime,
+          provider: 'weather_jma',
+          status: 'cache_hit'
+        });
         return cached.data;
       }
     }
@@ -75,11 +80,23 @@ class WeatherServiceFixed {
         data: result
       });
       
-      logger.info('Fetched real weather data from JMA', result);
+      const duration_ms = Date.now() - startTime;
+      logger.info('Fetched real weather data from JMA', {
+        ...result,
+        duration_ms,
+        provider: 'weather_jma',
+        status: 'success'
+      });
       
       return result;
     } catch (error) {
-      logger.error('Failed to fetch weather data', { error: error.message });
+      const duration_ms = Date.now() - startTime;
+      logger.error('Failed to fetch weather data', {
+        error: error.message,
+        duration_ms,
+        provider: 'weather_jma',
+        status: 'failed'
+      });
       throw error;
     }
   }

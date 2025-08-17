@@ -19,7 +19,13 @@ if (envValidation.warnings.length > 0) {
 
 const config = getConfig();
 
+import { requestIdMiddleware } from './middleware/requestId.js';
+
 export const app = express();
+
+// リクエストIDミドルウェアを最初に追加
+app.use(requestIdMiddleware);
+
 app.use(morgan('dev'));
 app.use(cors());
 
