@@ -1,0 +1,123 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+    
+    - name: Install dependencies
+      working-directory: ./api
+      run: npm ci --production
+    
+    - name: Setup Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+    
+    - name: Deploy database migrations
+      if: env.SUPABASE_ACCESS_TOKEN != ''
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      run: |
+        supabase link --project-ref $SUPABASE_PROJECT_ID
+        supabase db push
+    
+    - name: Deploy to production
+      env:
+        DEPLOY_HOOK: ${{ secrets.DEPLOY_HOOK_URL }}
+      if: env.DEPLOY_HOOK != ''
+      run: |
+        curl -X POST $DEPLOY_HOOK
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+      env:
+        REACT_APP_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+        REACT_APP_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+    
+    - name: Deploy to Vercel
+      if: env.VERCEL_TOKEN != ''
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      run: |
+        npm i -g vercel
+        vercel --prod --token=$VERCEL_TOKEN
+
+  notify-deployment:
+    needs: [deploy-api, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify deployment status
+      env:
+        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      if: env.SLACK_WEBHOOK != ''
+      run: |
+        if [ "${{ needs.deploy-api.result }}" == "success" ] && [ "${{ needs.deploy-frontend.result }}" == "success" ]; then
+          STATUS="✅ Deployment successful"
+          COLOR="good"
+        else
+          STATUS="❌ Deployment failed"
+          COLOR="danger"
+        fi
+        
+        curl -X POST $SLACK_WEBHOOK \
+          -H 'Content-Type: application/json' \
+          -d "{
+            \"attachments\": [{
+              \"color\": \"$COLOR\",
+              \"title\": \"Heatstroke Monitoring System\",
+              \"text\": \"$STATUS\",
+              \"fields\": [
+                {
+                  \"title\": \"Branch\",
+                  \"value\": \"${{ github.ref_name }}\",
+                  \"short\": true
+                },
+                {
+                  \"title\": \"Commit\",
+                  \"value\": \"${{ github.sha }}\",
+                  \"short\": true
+                }
+              ]
+            }]
+          }"

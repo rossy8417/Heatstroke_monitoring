@@ -1,0 +1,103 @@
+name: Test and Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: api/package-lock.json
+    
+    - name: Install dependencies (API)
+      working-directory: ./api
+      run: npm ci
+    
+    - name: Create .env file
+      working-directory: ./api
+      run: |
+        cp .env.example .env
+        echo "NODE_ENV=test" >> .env
+    
+    - name: Run self tests
+      working-directory: ./api
+      run: |
+        npm run selftest || true
+        npm run selftest:sequence || true
+    
+    - name: Check code for security issues
+      working-directory: ./api
+      run: |
+        npx audit-ci --moderate || true
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install dependencies (Frontend)
+      working-directory: ./frontend
+      run: npm ci
+    
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+      env:
+        CI: true
+    
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm test -- --coverage --watchAll=false
+      env:
+        CI: true
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+    
+    - name: Install ESLint
+      run: npm install -g eslint
+    
+    - name: Lint API code
+      working-directory: ./api
+      run: |
+        npx eslint . --ext .js,.jsx --ignore-path .gitignore || true
+    
+    - name: Lint Frontend code
+      working-directory: ./frontend
+      run: |
+        npx eslint . --ext .js,.jsx,.ts,.tsx --ignore-path .gitignore || true

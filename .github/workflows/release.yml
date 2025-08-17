@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Create Release Notes
+      id: release_notes
+      run: |
+        # 前回のタグから現在のタグまでのコミットログを取得
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        CURRENT_TAG=${GITHUB_REF#refs/tags/}
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          COMMITS=$(git log --oneline --no-merges)
+        else
+          COMMITS=$(git log --oneline --no-merges ${PREVIOUS_TAG}..${CURRENT_TAG})
+        fi
+        
+        # リリースノートを生成
+        echo "## What's Changed" > release_notes.md
+        echo "" >> release_notes.md
+        
+        # 機能追加
+        echo "### ✨ Features" >> release_notes.md
+        echo "$COMMITS" | grep -E "^[a-f0-9]+ (feat|feature):" | sed 's/^[a-f0-9]+ /- /' >> release_notes.md || echo "- No new features" >> release_notes.md
+        echo "" >> release_notes.md
+        
+        # バグ修正
+        echo "### 🐛 Bug Fixes" >> release_notes.md
+        echo "$COMMITS" | grep -E "^[a-f0-9]+ (fix|bugfix):" | sed 's/^[a-f0-9]+ /- /' >> release_notes.md || echo "- No bug fixes" >> release_notes.md
+        echo "" >> release_notes.md
+        
+        # 改善
+        echo "### 📈 Improvements" >> release_notes.md
+        echo "$COMMITS" | grep -E "^[a-f0-9]+ (improve|enhancement|perf):" | sed 's/^[a-f0-9]+ /- /' >> release_notes.md || echo "- No improvements" >> release_notes.md
+        echo "" >> release_notes.md
+        
+        # ドキュメント
+        echo "### 📝 Documentation" >> release_notes.md
+        echo "$COMMITS" | grep -E "^[a-f0-9]+ (docs|doc):" | sed 's/^[a-f0-9]+ /- /' >> release_notes.md || echo "- No documentation changes" >> release_notes.md
+        echo "" >> release_notes.md
+        
+        # その他
+        echo "### 🔧 Other Changes" >> release_notes.md
+        echo "$COMMITS" | grep -vE "^[a-f0-9]+ (feat|feature|fix|bugfix|improve|enhancement|perf|docs|doc):" | sed 's/^[a-f0-9]+ /- /' >> release_notes.md || echo "- No other changes" >> release_notes.md
+        
+        # 出力をGitHub Actionsの変数に保存
+        echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+        cat release_notes.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+        draft: false
+        prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+
+  build-and-upload:
+    needs: create-release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+    
+    - name: Build API artifact
+      working-directory: ./api
+      run: |
+        npm ci --production
+        tar -czf ../heatstroke-api-${{ github.ref_name }}.tar.gz .
+    
+    - name: Build Frontend artifact
+      working-directory: ./frontend
+      run: |
+        npm ci
+        npm run build
+        tar -czf ../heatstroke-frontend-${{ github.ref_name }}.tar.gz build/
+    
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          heatstroke-api-${{ github.ref_name }}.tar.gz
+          heatstroke-frontend-${{ github.ref_name }}.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
