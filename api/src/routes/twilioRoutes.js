@@ -8,6 +8,7 @@ import {
 } from '../controllers/twilioController.js';
 import { twilioService } from '../services/twilioService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { validateTwilioWebhook } from '../middleware/twilioWebhook.js';
 import { logger } from '../utils/logger.js';
 
 const router = express.Router();
@@ -15,36 +16,16 @@ const router = express.Router();
 // Twilioは多くのWebhookで application/x-www-form-urlencoded を送る
 router.use(express.urlencoded({ extended: false }));
 
-function verifyTwilioSignature(req, res, next) {
-  try {
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const signature = req.get('X-Twilio-Signature');
-    // 署名またはトークンが無い場合は開発用途としてスキップ（ログのみ）
-    if (!authToken || !signature) {
-      return next();
-    }
-    const url = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-    const params = req.method === 'POST' ? req.body : req.query;
-    const valid = twilio.validateRequest(authToken, signature, url, params);
-    if (!valid) {
-      return res.status(401).send('Invalid Twilio signature');
-    }
-    return next();
-  } catch (e) {
-    return res.status(400).send('Bad Request');
-  }
-}
-
 // TwiML生成（IVR音声フロー）
-router.post('/twiml', verifyTwilioSignature, asyncHandler(generateTwiML));
-router.get('/twiml', verifyTwilioSignature, asyncHandler(generateTwiML));
+router.post('/twiml', validateTwilioWebhook, asyncHandler(generateTwiML));
+router.get('/twiml', validateTwilioWebhook, asyncHandler(generateTwiML));
 
 // DTMF入力処理
-router.post('/gather', verifyTwilioSignature, asyncHandler(handleGather));
+router.post('/gather', validateTwilioWebhook, asyncHandler(handleGather));
 
 // ステータスコールバック
-router.post('/status', verifyTwilioSignature, asyncHandler(handleStatusCallback));
-router.post('/sms-status', verifyTwilioSignature, asyncHandler(handleSmsStatusCallback));
+router.post('/status', validateTwilioWebhook, asyncHandler(handleStatusCallback));
+router.post('/sms-status', validateTwilioWebhook, asyncHandler(handleSmsStatusCallback));
 
 // テスト用エンドポイント
 

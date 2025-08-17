@@ -1,6 +1,9 @@
 import twilio from 'twilio';
 import { logger } from '../utils/logger.js';
 import { supabaseDataStore } from '../services/supabaseDataStore.js';
+import { lineService } from '../services/lineService.js';
+import { twilioService } from '../services/twilioService.js';
+import { getCurrentRequestId } from '../middleware/requestId.js';
 
 const { VoiceResponse } = twilio.twiml;
 
@@ -226,13 +229,221 @@ async function updateAlertStatus(alertId, status, metadata = {}) {
 }
 
 async function notifyFamily(alertId, reason) {
-  // TODO: LINE通知、SMS送信の実装
-  logger.info('Family notification triggered', { alertId, reason });
+  const requestId = getCurrentRequestId();
+  const startTime = Date.now();
+  
+  try {
+    // アラート情報を取得
+    const { data: alert, error } = await supabaseDataStore.getAlert(alertId);
+    
+    if (error || !alert) {
+      logger.error('Failed to get alert for family notification', {
+        alertId,
+        error,
+        requestId
+      });
+      return;
+    }
+    
+    const household = alert.household;
+    if (!household) {
+      logger.error('No household found for alert', { alertId, requestId });
+      return;
+    }
+    
+    // 家族連絡先を取得（実際の実装では世帯の連絡先情報から取得）
+    const familyContacts = household.contacts?.filter(c => c.type === 'family') || [];
+    
+    const notifications = [];
+    
+    // LINE通知を送信
+    for (const contact of familyContacts) {
+      if (contact.line_user_id) {
+        const lineResult = await lineService.notifyFamily(
+          alertId,
+          household.name,
+          reason,
+          household.phone
+        );
+        
+        notifications.push({
+          type: 'line',
+          recipient: contact.line_user_id,
+          status: lineResult.success ? 'sent' : 'failed',
+          error: lineResult.error
+        });
+        
+        // 通知記録を保存
+        await supabaseDataStore.createNotification({
+          alert_id: alertId,
+          type: 'family_notification',
+          recipient: contact.line_user_id,
+          channel: 'line',
+          status: lineResult.success ? 'sent' : 'failed',
+          metadata: {
+            reason,
+            contact_name: contact.name,
+            household_name: household.name
+          }
+        });
+      }
+      
+      // SMS通知も送信（電話番号がある場合）
+      if (contact.phone) {
+        const smsResult = await twilioService.sendSms({
+          to: contact.phone,
+          body: `【熱中症見守り】${household.name}さんの状態: ${reason === 'tired' ? '疲れています' : '要確認'}。確認をお願いします。`,
+          alertId
+        });
+        
+        notifications.push({
+          type: 'sms',
+          recipient: contact.phone,
+          status: smsResult.success ? 'sent' : 'failed',
+          error: smsResult.error
+        });
+        
+        // 通知記録を保存
+        await supabaseDataStore.createNotification({
+          alert_id: alertId,
+          type: 'family_notification',
+          recipient: contact.phone,
+          channel: 'sms',
+          status: smsResult.success ? 'sent' : 'failed',
+          metadata: {
+            reason,
+            contact_name: contact.name,
+            household_name: household.name,
+            message_sid: smsResult.messageSid
+          }
+        });
+      }
+    }
+    
+    const duration_ms = Date.now() - startTime;
+    
+    logger.info('Family notifications sent', {
+      alertId,
+      reason,
+      notificationCount: notifications.length,
+      duration_ms,
+      requestId
+    });
+    
+  } catch (error) {
+    const duration_ms = Date.now() - startTime;
+    
+    logger.error('Failed to send family notifications', {
+      alertId,
+      reason,
+      error: error.message,
+      duration_ms,
+      requestId
+    });
+  }
 }
 
 async function notifyEmergency(alertId) {
-  // TODO: 緊急連絡の実装
-  logger.info('Emergency notification triggered', { alertId });
+  const requestId = getCurrentRequestId();
+  const startTime = Date.now();
+  
+  try {
+    // アラート情報を取得
+    const { data: alert, error } = await supabaseDataStore.getAlert(alertId);
+    
+    if (error || !alert) {
+      logger.error('Failed to get alert for emergency notification', {
+        alertId,
+        error,
+        requestId
+      });
+      return;
+    }
+    
+    const household = alert.household;
+    if (!household) {
+      logger.error('No household found for alert', { alertId, requestId });
+      return;
+    }
+    
+    // 緊急連絡先を取得
+    const emergencyContacts = household.contacts?.filter(c => 
+      c.type === 'emergency' || c.type === 'family'
+    ) || [];
+    
+    // LINE緊急通知
+    const lineResult = await lineService.notifyEmergency(
+      alertId,
+      household.name,
+      emergencyContacts
+    );
+    
+    // 各緊急連絡先に電話
+    for (const contact of emergencyContacts) {
+      if (contact.phone) {
+        // 緊急電話をかける
+        const callResult = await twilioService.makeCall({
+          to: contact.phone,
+          alertId,
+          householdName: household.name,
+          attempt: 1,
+          isEmergency: true
+        });
+        
+        // 通話記録を保存
+        await supabaseDataStore.createCallLog({
+          alert_id: alertId,
+          household_id: household.id,
+          call_id: callResult.callSid,
+          attempt: 1,
+          result: 'initiated',
+          provider: 'twilio',
+          metadata: {
+            contact_name: contact.name,
+            contact_type: contact.type,
+            is_emergency: true
+          }
+        });
+        
+        // 通知記録を保存
+        await supabaseDataStore.createNotification({
+          alert_id: alertId,
+          type: 'emergency_call',
+          recipient: contact.phone,
+          channel: 'voice',
+          status: 'initiated',
+          metadata: {
+            contact_name: contact.name,
+            household_name: household.name,
+            call_sid: callResult.callSid
+          }
+        });
+      }
+    }
+    
+    // アラートステータスをエスカレート済みに更新
+    await supabaseDataStore.updateAlertStatus(alertId, 'escalated', 'system');
+    
+    const duration_ms = Date.now() - startTime;
+    
+    logger.info('Emergency notifications sent', {
+      alertId,
+      householdName: household.name,
+      contactCount: emergencyContacts.length,
+      duration_ms,
+      requestId
+    });
+    
+  } catch (error) {
+    const duration_ms = Date.now() - startTime;
+    
+    logger.error('Failed to send emergency notifications', {
+      alertId,
+      error: error.message,
+      duration_ms,
+      requestId
+    });
+  }
 }
 
 function mapCallStatus(twilioStatus) {

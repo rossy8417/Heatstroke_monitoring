@@ -9,6 +9,9 @@ class WeatherServiceFixed {
     // キャッシュ（5分間有効）
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5分
+    this.cacheExpiryMs = 5 * 60 * 1000;
+    this.cacheHits = 0;
+    this.cacheMisses = 0;
   }
 
   /**
@@ -22,6 +25,7 @@ class WeatherServiceFixed {
     if (this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey);
       if (Date.now() - cached.timestamp < this.cacheTimeout) {
+        this.cacheHits++;
         logger.info('Using cached weather data', {
           duration_ms: Date.now() - startTime,
           provider: 'weather_jma',
@@ -30,6 +34,8 @@ class WeatherServiceFixed {
         return cached.data;
       }
     }
+    
+    this.cacheMisses++;
     
     try {
       // 最新時刻を取得
@@ -151,6 +157,36 @@ class WeatherServiceFixed {
     if (wbgt < 28) return '警戒';
     if (wbgt < 31) return '厳重警戒';
     return '危険';
+  }
+
+  /**
+   * キャッシュ統計を取得
+   */
+  getCacheStats() {
+    let hits = 0;
+    let misses = 0;
+    let totalSize = 0;
+    let expiredCount = 0;
+    const now = Date.now();
+
+    for (const [key, data] of this.cache.entries()) {
+      totalSize++;
+      if (data.expiresAt < now) {
+        expiredCount++;
+      }
+    }
+
+    return {
+      size: totalSize,
+      expired: expiredCount,
+      maxSize: 100,
+      ttl: this.cacheExpiryMs,
+      hits: this.cacheHits || 0,
+      misses: this.cacheMisses || 0,
+      hitRate: this.cacheHits && this.cacheMisses 
+        ? (this.cacheHits / (this.cacheHits + this.cacheMisses) * 100).toFixed(2) + '%'
+        : 'N/A'
+    };
   }
 }
 

@@ -11,6 +11,8 @@ import { dataStore } from './services/dataStore.js';
 import { weatherService } from './services/weatherService.js';
 import apiRoutes from './routes/apiRoutes.js';
 import twilioRoutes from './routes/twilioRoutes.js';
+import lineRoutes from './routes/lineRoutes.js';
+import healthRoutes from './routes/healthRoutes.js';
 
 const envValidation = validateEnv();
 if (envValidation.warnings.length > 0) {
@@ -82,6 +84,12 @@ app.use('/api', apiRoutes);
 
 // Twilio Webhooks / IVR
 app.use('/webhooks/twilio', twilioRoutes);
+
+// LINE routes
+app.use('/line', lineRoutes);
+
+// Health check routes
+app.use('/', healthRoutes);
 
 const lineTemplates = {
   family_unanswered: ({ name, phone }) => ({

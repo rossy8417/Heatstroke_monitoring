@@ -1,6 +1,7 @@
 import { supabaseDataStore } from '../services/supabaseDataStore.js';
 import { twilioService } from '../services/twilioService.js';
 import { logger } from '../utils/logger.js';
+import { withDatabaseRetry, withTwilioRetry } from '../utils/retryWithBackoff.js';
 
 /**
  * エスカレーションジョブ
@@ -25,8 +26,10 @@ export class EscalationJob {
     this.isRunning = true;
     
     try {
-      // 本日の未応答アラートを取得
-      const { data: alerts, error } = await supabaseDataStore.getTodayAlerts();
+      // 本日の未応答アラートを取得（リトライ付き）
+      const { data: alerts, error } = await withDatabaseRetry(async () => {
+        return await supabaseDataStore.getTodayAlerts();
+      });
       
       if (error) {
         throw new Error(`Failed to fetch alerts: ${error.message}`);

@@ -1,5 +1,6 @@
 import twilio from 'twilio';
 import { logger } from '../utils/logger.js';
+import { withTwilioRetry } from '../utils/retryWithBackoff.js';
 
 class TwilioService {
   constructor() {
@@ -56,16 +57,19 @@ class TwilioService {
         provider: 'twilio'
       });
       
-      const call = await this.client.calls.create({
-        to,
-        from: this.phoneNumber,
-        url: twimlUrl,
-        method: 'POST',
-        statusCallback: `${this.webhookUrl}/status`,
-        statusCallbackMethod: 'POST',
-        statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-        timeout: 60, // 60秒でタイムアウト
-        record: false // 録音はしない（プライバシー配慮）
+      // Exponential backoffでリトライ
+      const call = await withTwilioRetry(async () => {
+        return await this.client.calls.create({
+          to,
+          from: this.phoneNumber,
+          url: twimlUrl,
+          method: 'POST',
+          statusCallback: `${this.webhookUrl}/status`,
+          statusCallbackMethod: 'POST',
+          statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+          timeout: 60, // 60秒でタイムアウト
+          record: false // 録音はしない（プライバシー配慮）
+        });
       });
 
       const duration_ms = Date.now() - startTime;
@@ -131,11 +135,14 @@ class TwilioService {
         bodyLength: body.length
       });
       
-      const message = await this.client.messages.create({
-        to,
-        from: this.phoneNumber,
-        body,
-        statusCallback: `${this.webhookUrl}/sms-status`
+      // Exponential backoffでリトライ
+      const message = await withTwilioRetry(async () => {
+        return await this.client.messages.create({
+          to,
+          from: this.phoneNumber,
+          body,
+          statusCallback: `${this.webhookUrl}/sms-status`
+        });
       });
 
       const duration_ms = Date.now() - startTime;
