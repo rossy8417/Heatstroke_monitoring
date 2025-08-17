@@ -1,4 +1,4 @@
-import { weatherService } from '../services/weatherService.js';
+import { weatherService } from '../services/weatherServiceUnified.js';
 import { supabaseDataStore } from '../services/supabaseDataStore.js';
 import { twilioService } from '../services/twilioService.js';
 import { logger } from '../utils/logger.js';

@@ -4,7 +4,7 @@ import { supabaseDataStore } from '../services/supabaseDataStore.js';
 import { twilioService } from '../services/twilioService.js';
 import { lineService } from '../services/lineService.js';
 import { stripeService } from '../services/stripeService.js';
-import { weatherServiceFixed } from '../services/weatherServiceFixed.js';
+import { weatherServiceFixed } from '../services/weatherServiceUnified.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import os from 'os';
 import { promises as fs } from 'fs';

@@ -4,7 +4,7 @@
  * ステップ2: 気象データ取得テスト
  */
 
-import { weatherService } from '../services/weatherService.js';
+import { weatherService } from '../services/weatherServiceUnified.js';
 
 async function testWeatherData() {
   console.log('🌡️  ステップ2: 気象データ取得テスト\n');

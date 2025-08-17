@@ -8,7 +8,7 @@ import { errorHandler, notFoundHandler, AppError, asyncHandler } from './middlew
 import { logger } from './utils/logger.js';
 import { validateEnv, getConfig } from './utils/envValidator.js';
 import { dataStore } from './services/dataStore.js';
-import { weatherService } from './services/weatherService.js';
+import { weatherService } from './services/weatherServiceUnified.js';
 import apiRoutes from './routes/apiRoutes.js';
 import twilioRoutes from './routes/twilioRoutes.js';
 import lineRoutes from './routes/lineRoutes.js';

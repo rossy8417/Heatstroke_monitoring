@@ -1,7 +1,6 @@
 import express from 'express';
 import { supabaseDataStore } from '../services/supabaseDataStore.js';
-import { weatherService } from '../services/weatherService.js';
-import { weatherServiceFixed } from '../services/weatherServiceFixed.js';
+import { weatherService, weatherServiceFixed } from '../services/weatherServiceUnified.js';
 import { twilioService } from '../services/twilioService.js';
 import { logger } from '../utils/logger.js';
 

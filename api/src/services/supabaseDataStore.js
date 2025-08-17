@@ -1,6 +1,7 @@
 import { supabase, supabaseAdmin, handleSupabaseError } from '../db/supabase.js';
 import { logger } from '../utils/logger.js';
 import crypto from 'crypto';
+import { castToUUID, safeCastToUUID } from '../utils/uuidHelper.js';
 
 class SupabaseDataStore {
   constructor() {
@@ -66,13 +67,19 @@ class SupabaseDataStore {
       return { data: household || null, error: household ? null : { message: 'Not found' } };
     }
 
+    // UUID形式に変換
+    const uuid = safeCastToUUID(id);
+    if (!uuid) {
+      return { data: null, error: { message: 'Invalid UUID format' } };
+    }
+
     const { data, error } = await supabase
       .from('households')
       .select(`
         *,
         contacts (*)
       `)
-      .eq('id', id)
+      .eq('id', uuid)
       .single();
 
     return { data, error: handleSupabaseError(error) };
@@ -87,10 +94,16 @@ class SupabaseDataStore {
       return { data: household, error: null };
     }
 
+    // UUID形式に変換
+    const uuid = safeCastToUUID(id);
+    if (!uuid) {
+      return { data: null, error: { message: 'Invalid UUID format' } };
+    }
+
     const { data, error } = await supabaseAdmin
       .from('households')
       .update(updates)
-      .eq('id', id)
+      .eq('id', uuid)
       .select()
       .single();
 
@@ -108,10 +121,16 @@ class SupabaseDataStore {
       return { data: existed, error: null };
     }
 
+    // UUID形式に変換
+    const uuid = safeCastToUUID(id);
+    if (!uuid) {
+      return { data: null, error: { message: 'Invalid UUID format' } };
+    }
+
     const { error } = await supabaseAdmin
       .from('households')
       .delete()
-      .eq('id', id);
+      .eq('id', uuid);
 
     if (!error) {
       await this.createAuditLog('DELETE_HOUSEHOLD', 'system', 'household', id, {});
@@ -196,13 +215,19 @@ class SupabaseDataStore {
       return { data: { ...alert, household: household || null }, error: null };
     }
 
+    // UUID形式に変換
+    const uuid = safeCastToUUID(id);
+    if (!uuid) {
+      return { data: null, error: { message: 'Invalid UUID format' } };
+    }
+
     const { data, error } = await supabase
       .from('alerts')
       .select(`
         *,
         household:households(*)
       `)
-      .eq('id', id)
+      .eq('id', uuid)
       .single();
 
     return { data, error: handleSupabaseError(error) };
@@ -217,10 +242,16 @@ class SupabaseDataStore {
       return { data: alert, error: null };
     }
 
+    // UUID形式に変換
+    const uuid = safeCastToUUID(id);
+    if (!uuid) {
+      return { data: null, error: { message: 'Invalid UUID format' } };
+    }
+
     const { data, error } = await supabaseAdmin
       .from('alerts')
       .update(updates)
-      .eq('id', id)
+      .eq('id', uuid)
       .select(`
         *,
         household:households(*)
@@ -240,10 +271,16 @@ class SupabaseDataStore {
       return { data: alert, error: null };
     }
 
+    // UUID形式に変換
+    const uuid = safeCastToUUID(id);
+    if (!uuid) {
+      return { data: null, error: { message: 'Invalid UUID format' } };
+    }
+
     // PostgreSQLのjsonb演算子を使用して安全にマージ
     // metadata = metadata || $1 でマージ
     const { data, error } = await supabaseAdmin.rpc('update_alert_metadata', {
-      alert_id: id,
+      alert_id: uuid,
       metadata_updates: metadataUpdates
     });
     
@@ -286,6 +323,12 @@ class SupabaseDataStore {
       return { data: alert, error: null };
     }
 
+    // UUID形式に変換
+    const uuid = safeCastToUUID(id);
+    if (!uuid) {
+      return { data: null, error: { message: 'Invalid UUID format' } };
+    }
+
     const updates = { status };
     if (status === 'ok' || status === 'help') {
       updates.closed_at = new Date().toISOString();
@@ -295,7 +338,7 @@ class SupabaseDataStore {
     const { data, error } = await supabaseAdmin
       .from('alerts')
       .update(updates)
-      .eq('id', id)
+      .eq('id', uuid)
       .select()
       .single();
 

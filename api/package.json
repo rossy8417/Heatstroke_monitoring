@@ -15,7 +15,11 @@
     "test:step3": "node --env-file=.env src/tests/step3-alert-and-call.js",
     "test:step4": "node --env-file=.env src/tests/step4-escalation-test.js",
     "test:step5": "node --env-file=.env src/tests/step5-integration-test.js",
-    "test:all": "npm run test:step5"
+    "test:all": "npm run test:step5",
+    "configure-rls:dev": "node --env-file=.env scripts/configure-rls.js development",
+    "configure-rls:prod": "node --env-file=.env scripts/configure-rls.js production",
+    "db:migrate": "node --env-file=.env scripts/migrate.js",
+    "db:seed": "node --env-file=.env scripts/seed-data.js"
   },
   "dependencies": {
     "@line/bot-sdk": "^9.0.2",
