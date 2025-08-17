@@ -1,8 +1,25 @@
 import { app } from './app-improved.js';
+import { validateEnv, setDefaults } from './utils/validateEnv.js';
+import { logger } from './utils/logger.js';
+
+// デフォルト値を設定
+setDefaults();
+
+// 環境変数をバリデート
+try {
+  validateEnv();
+} catch (error) {
+  logger.error('Failed to start server:', error);
+  process.exit(1);
+}
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
+  logger.info(`🚀 改善版APIサーバー起動: http://localhost:${PORT}`, {
+    NODE_ENV: process.env.NODE_ENV,
+    port: PORT
+  });
   console.log(`🚀 改善版APIサーバー起動: http://localhost:${PORT}`);
   console.log(`📍 気象データエンドポイント:`);
   console.log(`   - スタブ: GET /stub/weather?grid=5339-24`);
