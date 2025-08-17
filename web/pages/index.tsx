@@ -53,6 +53,36 @@ function DashboardContent() {
             熱中症見守りシステム
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button
+              onClick={() => router.push('/alerts')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              アラート管理
+            </button>
+            <button
+              onClick={() => router.push('/households')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              世帯管理
+            </button>
             <span style={{ fontSize: '14px', color: '#6b7280' }}>
               {user?.email}
             </span>

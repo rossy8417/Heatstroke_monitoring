@@ -37,17 +37,23 @@ function AlertsContent() {
     mutationFn: alertsApi.retry,
     onMutate: (alertId) => {
       setProcessingAlerts(prev => new Set(prev).add(alertId));
+      setMessage('再コールを実行中...');
     },
     onSuccess: (data, alertId) => {
-      setMessage('再コールを開始しました');
+      if (data.success) {
+        setMessage('✅ 再コールを開始しました');
+      } else {
+        setMessage(`⚠️ 再コール失敗: ${data.error || 'Twilioの設定を確認してください'}`);
+      }
       queryClient.invalidateQueries({ queryKey: ['todayAlerts'] });
       queryClient.invalidateQueries({ queryKey: ['alertsSummary'] });
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), 5000);
     },
-    onError: (error, alertId) => {
-      setMessage('再コールに失敗しました');
+    onError: (error: any, alertId) => {
+      const errorMessage = error.response?.data?.error || error.message || '再コールに失敗しました';
+      setMessage(`❌ エラー: ${errorMessage}`);
       console.error('Retry failed:', error);
-      setTimeout(() => setMessage(null), 3000);
+      setTimeout(() => setMessage(null), 5000);
     },
     onSettled: (data, error, alertId) => {
       setProcessingAlerts(prev => {
@@ -66,7 +72,8 @@ function AlertsContent() {
       setProcessingAlerts(prev => new Set(prev).add(alertId));
     },
     onSuccess: (data, { alertId, status }) => {
-      setMessage(`ステータスを「${getStatusLabel(status)}」に更新しました`);
+      const label = status === 'in_progress' ? '対応中' : getStatusLabel(status);
+      setMessage(`✅ ステータスを「${label}」に更新しました`);
       queryClient.invalidateQueries({ queryKey: ['todayAlerts'] });
       queryClient.invalidateQueries({ queryKey: ['alertsSummary'] });
       setTimeout(() => setMessage(null), 3000);
@@ -118,8 +125,58 @@ function AlertsContent() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#f9fafb',
-      padding: '24px',
     }}>
+      {/* ナビゲーションバー */}
+      <div style={{
+        backgroundColor: 'white',
+        borderBottom: '1px solid #e5e7eb',
+        padding: '16px 24px',
+        marginBottom: '24px',
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button
+              onClick={() => router.push('/')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              ← ダッシュボード
+            </button>
+            <button
+              onClick={() => router.push('/households')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              世帯管理
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* メインコンテンツ */}
+      <div style={{ padding: '0 24px' }}>
       {/* ヘッダー */}
       <div style={{
         backgroundColor: 'white',
@@ -268,8 +325,8 @@ function AlertsContent() {
                 gap: '8px',
                 flexWrap: 'wrap',
               }}>
-                {/* 再コールボタン（未応答・要注意の場合） */}
-                {(alert.status === 'unanswered' || alert.status === 'tired') && (
+                {/* 再コールボタン（未応答・要注意・エスカレーションの場合） */}
+                {(alert.status === 'unanswered' || alert.status === 'tired' || alert.status === 'escalated') && (
                   <button
                     onClick={() => handleRetry(alert.id)}
                     disabled={processingAlerts.has(alert.id)}
@@ -290,7 +347,7 @@ function AlertsContent() {
                 )}
 
                 {/* 対応中ボタン */}
-                {alert.status !== 'ok' && alert.status !== 'completed' && (
+                {alert.status !== 'ok' && alert.status !== 'completed' && !alert.in_progress && (
                   <button
                     onClick={() => handleStatusUpdate(alert.id, 'in_progress')}
                     disabled={processingAlerts.has(alert.id)}
@@ -311,7 +368,7 @@ function AlertsContent() {
                 )}
 
                 {/* 完了ボタン */}
-                {alert.status === 'in_progress' && (
+                {(alert.in_progress || alert.status === 'in_progress') && (
                   <button
                     onClick={() => handleStatusUpdate(alert.id, 'completed')}
                     disabled={processingAlerts.has(alert.id)}
@@ -369,6 +426,7 @@ function AlertsContent() {
           to { transform: rotate(360deg); }
         }
       `}</style>
+      </div>
     </div>
   );
 }

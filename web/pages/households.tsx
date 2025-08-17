@@ -70,20 +70,36 @@ function HouseholdsContent() {
         padding: '16px 24px',
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button
               onClick={() => router.push('/')}
               style={{
-                background: 'none',
+                padding: '8px 16px',
+                backgroundColor: '#6b7280',
+                color: 'white',
                 border: 'none',
-                color: '#6b7280',
-                textDecoration: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
                 cursor: 'pointer',
-                fontSize: 'inherit',
-                padding: 0,
               }}
             >
               ← ダッシュボード
+            </button>
+            <button
+              onClick={() => router.push('/alerts')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+              }}
+            >
+              アラート管理
             </button>
             <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>
               世帯管理
