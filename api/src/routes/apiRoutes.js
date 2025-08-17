@@ -130,6 +130,92 @@ router.get('/alerts/today', async (req, res) => {
   }
 });
 
+// アラート詳細取得
+router.get('/alerts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // アラート情報を取得
+    const { data: alert, error: alertError } = await supabaseDataStore.getAlert(id);
+    
+    if (alertError || !alert) {
+      return res.status(404).json({ error: 'Alert not found' });
+    }
+    
+    // 通話ログを取得
+    const { data: callLogs, error: callError } = await supabaseDataStore.getCallLogsByAlert(id);
+    
+    // 通知履歴を取得（仮実装）
+    const notifications = [];
+    
+    // レスポンスを構築
+    const response = {
+      ...alert,
+      callLogs: callLogs || [],
+      notifications: notifications,
+      timeline: buildTimeline(alert, callLogs || [], notifications)
+    };
+    
+    res.json({ data: response });
+  } catch (error) {
+    logger.error('Failed to get alert details', { 
+      alertId: req.params.id,
+      error: error.message 
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// タイムライン構築ヘルパー
+function buildTimeline(alert, callLogs, notifications) {
+  const events = [];
+  
+  // アラート作成
+  events.push({
+    type: 'alert_created',
+    timestamp: alert.created_at,
+    description: `アラート発生: ${alert.level} (WBGT: ${alert.wbgt}°C)`,
+    icon: 'alert'
+  });
+  
+  // 通話ログ
+  callLogs.forEach(log => {
+    events.push({
+      type: 'call',
+      timestamp: log.created_at,
+      description: `電話${log.attempt}回目: ${log.result === 'ok' ? '応答あり' : '応答なし'}`,
+      icon: 'phone',
+      metadata: log
+    });
+  });
+  
+  // 通知
+  notifications.forEach(notif => {
+    events.push({
+      type: 'notification',
+      timestamp: notif.created_at,
+      description: `${notif.channel}通知: ${notif.status}`,
+      icon: notif.channel === 'line' ? 'chat' : 'mail',
+      metadata: notif
+    });
+  });
+  
+  // ステータス変更
+  if (alert.closed_at) {
+    events.push({
+      type: 'alert_closed',
+      timestamp: alert.closed_at,
+      description: `アラート終了: ${alert.status}`,
+      icon: 'check'
+    });
+  }
+  
+  // タイムスタンプでソート
+  events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  
+  return events;
+}
+
 // アラートサマリー
 router.get('/alerts/summary', async (req, res) => {
   try {

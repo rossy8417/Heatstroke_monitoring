@@ -49,6 +49,11 @@ export const alertsApi = {
     return data.summary || {};
   },
   
+  getDetail: async (id: string) => {
+    const { data } = await api.get(`/api/alerts/${id}`);
+    return data;
+  },
+  
   updateStatus: async (id: string, status: string) => {
     const { data } = await api.put(`/api/alerts/${id}/status`, { status });
     return data;
