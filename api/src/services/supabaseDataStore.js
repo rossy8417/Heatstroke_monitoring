@@ -221,7 +221,10 @@ class SupabaseDataStore {
       .from('alerts')
       .update(updates)
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        household:households(*)
+      `)
       .single();
 
     return { data, error: handleSupabaseError(error) };
@@ -237,15 +240,33 @@ class SupabaseDataStore {
       return { data: alert, error: null };
     }
 
-    // Supabase: metadataマージ（Postgresのjsonb || 演算子を使うか、アプリ側でマージ）
-    const { data: current } = await this.getAlert(id);
-    const merged = { ...(current?.metadata || {}), ...(metadataUpdates || {}) };
-    const { data, error } = await supabaseAdmin
-      .from('alerts')
-      .update({ metadata: merged })
-      .eq('id', id)
-      .select()
-      .single();
+    // PostgreSQLのjsonb演算子を使用して安全にマージ
+    // metadata = metadata || $1 でマージ
+    const { data, error } = await supabaseAdmin.rpc('update_alert_metadata', {
+      alert_id: id,
+      metadata_updates: metadataUpdates
+    });
+    
+    if (error) {
+      // RPCが存在しない場合はフォールバック
+      logger.warn('RPC update_alert_metadata not found, using fallback');
+      const { data: current } = await this.getAlert(id);
+      const merged = { ...(current?.metadata || {}), ...(metadataUpdates || {}) };
+      const { data: updateData, error: updateError } = await supabaseAdmin
+        .from('alerts')
+        .update({ 
+          metadata: merged,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select(`
+          *,
+          household:households(*)
+        `)
+        .single();
+      return { data: updateData, error: handleSupabaseError(updateError) };
+    }
+    
     return { data, error: handleSupabaseError(error) };
   }
 
@@ -347,14 +368,56 @@ class SupabaseDataStore {
       );
       // 新しい順
       logs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      return { data: logs, error: null };
+      
+      // 統一された形式に整形
+      const formattedLogs = logs.map(log => ({
+        call_id: log.call_id || log.callId,
+        alert_id: log.alert_id || log.alertId,
+        household_id: log.household_id || log.householdId,
+        attempt: log.attempt || 1,
+        result: log.result || 'unknown',
+        response_code: log.response_code || log.responseCode || null,
+        duration_seconds: log.duration_seconds || log.durationSeconds || null,
+        provider: log.provider || 'twilio',
+        created_at: log.created_at || log.createdAt
+      }));
+      
+      return { data: formattedLogs, error: null };
     }
 
-    const { data, error } = await supabase
-      .from('call_logs')
-      .select('*')
-      .eq('alert_id', alertId)
-      .order('created_at', { ascending: false });
+    // RPC関数を使用して整形されたデータを取得
+    const { data, error } = await supabase.rpc('get_formatted_call_logs', {
+      p_alert_id: alertId
+    });
+    
+    if (error) {
+      // RPCが存在しない場合はフォールバック
+      logger.warn('RPC get_formatted_call_logs not found, using fallback');
+      const { data: rawData, error: selectError } = await supabase
+        .from('call_logs')
+        .select('*')
+        .eq('alert_id', alertId)
+        .order('created_at', { ascending: false });
+      
+      if (selectError) {
+        return { data: [], error: handleSupabaseError(selectError) };
+      }
+      
+      // 統一された形式に整形
+      const formattedLogs = (rawData || []).map(log => ({
+        call_id: log.call_id,
+        alert_id: log.alert_id,
+        household_id: log.household_id,
+        attempt: log.attempt || 1,
+        result: log.result || 'unknown',
+        response_code: log.response_code || null,
+        duration_seconds: log.duration_seconds || null,
+        provider: log.provider || 'twilio',
+        created_at: log.created_at
+      }));
+      
+      return { data: formattedLogs, error: null };
+    }
 
     return { data: data || [], error: handleSupabaseError(error) };
   }
