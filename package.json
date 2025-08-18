@@ -5,17 +5,19 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:jobs\"",
     "dev:api": "cd api && npm run dev",
-    "dev:web": "cd web && npm run dev", 
+    "dev:web": "cd web && npm run dev",
     "dev:jobs": "cd jobs && npm run dev",
     "test": "node test-simple.js",
-    "test:full": "npm run test && cd web && npm run test:e2e",
-    "test:e2e": "cd web && npx playwright test tests/simple-e2e.js",
+    "test:pages": "node test-pages.js",
+    "test:all": "./test-all.sh",
+    "test:full": "npm run test && npm run test:pages",
     "build": "cd api && npm run build && cd ../web && npm run build",
     "start": "concurrently \"npm run start:api\" \"npm run start:web\"",
     "start:api": "cd api && npm start",
     "start:web": "cd web && npm start"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.0",
+    "puppeteer": "^24.16.2"
   }
 }

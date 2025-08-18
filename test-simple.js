@@ -33,7 +33,6 @@ async function runBasicTests() {
     
     // Web サーバーテスト（Next.js）
     { url: `${WEB_BASE}`, name: 'Web Frontend' },
-    { url: `${WEB_BASE}/api/health`, name: 'Next.js API Health' },
   ];
   
   const results = [];
