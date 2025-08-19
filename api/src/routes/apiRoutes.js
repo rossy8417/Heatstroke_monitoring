@@ -130,6 +130,32 @@ router.get('/alerts/today', async (req, res) => {
   }
 });
 
+// アラートサマリー（:idより先に定義する必要がある）
+router.get('/alerts/summary', async (req, res) => {
+  try {
+    const { data, error } = await supabaseDataStore.getAlertSummary();
+    
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+    
+    // サマリーのキー名を変換（_countを削除）
+    const formattedSummary = data ? {
+      ok: data.ok_count || data.ok || 0,
+      unanswered: data.unanswered_count || data.unanswered || 0,
+      tired: data.tired_count || data.tired || 0,
+      help: data.help_count || data.help || 0,
+      escalated: data.escalated_count || data.escalated || 0,
+      open: data.in_progress_count || data.open || 0
+    } : { ok: 0, unanswered: 0, tired: 0, help: 0, escalated: 0, open: 0 };
+    
+    res.json(formattedSummary);
+  } catch (error) {
+    logger.error('Failed to get alert summary', { error: error.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // アラート詳細取得
 router.get('/alerts/:id', async (req, res) => {
   try {
@@ -215,32 +241,6 @@ function buildTimeline(alert, callLogs, notifications) {
   
   return events;
 }
-
-// アラートサマリー
-router.get('/alerts/summary', async (req, res) => {
-  try {
-    const { data, error } = await supabaseDataStore.getAlertSummary();
-    
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-    
-    // サマリーのキー名を変換（_countを削除）
-    const formattedSummary = data ? {
-      ok: data.ok_count || data.ok || 0,
-      unanswered: data.unanswered_count || data.unanswered || 0,
-      tired: data.tired_count || data.tired || 0,
-      help: data.help_count || data.help || 0,
-      escalated: data.escalated_count || data.escalated || 0,
-      open: data.in_progress_count || data.open || 0
-    } : { ok: 0, unanswered: 0, tired: 0, help: 0, escalated: 0, open: 0 };
-    
-    res.json(formattedSummary);
-  } catch (error) {
-    logger.error('Failed to get alert summary', { error: error.message });
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // アラートステータス更新
 router.put('/alerts/:id/status', async (req, res) => {

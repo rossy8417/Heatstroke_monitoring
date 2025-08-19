@@ -443,6 +443,40 @@ class WeatherServiceUnified {
   }
 
   /**
+   * メッシュコードから気象データを取得
+   * @param {string} meshCode - メッシュコード
+   * @returns {Promise<Object>} 気象データ
+   */
+  async getWeatherByMesh(meshCode) {
+    try {
+      // 現在は東京のデータを返す（メッシュコード対応は将来実装）
+      return await this.getTokyoWeather();
+    } catch (error) {
+      logger.error('Failed to get weather by mesh', { meshCode, error: error.message });
+      
+      // フォールバック値を返す
+      const hour = new Date().getHours();
+      let temp = 28, humidity = 65;
+      
+      if (hour >= 10 && hour < 16) {
+        temp = 32;
+        humidity = 60;
+      }
+      
+      const wbgt = this.calculateWBGT(temp, humidity);
+      
+      return {
+        temp,
+        humidity,
+        wbgt,
+        level: this.getAlertLevel(wbgt),
+        stationName: 'フォールバックデータ',
+        observedAt: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
    * キャッシュをクリア
    */
   clearCache() {

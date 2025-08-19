@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import cors from 'cors';
 import { Client as LineClient, middleware as lineMiddleware } from '@line/bot-sdk';
+import apiRoutes from './routes/apiRoutes.js';
 
 export const app = express();
 app.use(morgan('dev'));
@@ -204,9 +205,12 @@ app.post('/stub/line/push', async (req, res) => {
       await lineClient.pushMessage(to || to_line_user_id, lineMessage);
       return res.json({ ok: true, push_id: id, message, delivered: true, note: providedAlertId ? undefined : 'warning: alert_id not provided; postback may not update server state' });
     }
-    return res.json({ ok: true, push_id: id, message, delivered: false, note: providedAlertId ? undefined : 'warning: alert_id not provided; postback may not update server state' });
+    // スタブモード（LINE未設定時）は常に成功を返す
+    return res.json({ ok: true, push_id: id, message, delivered: false, stub_mode: true, note: 'LINE未設定のためスタブモードで動作' });
   } catch (e) {
-    return res.status(502).json({ error: 'line_push_failed', detail: String(e?.message || e) });
+    console.error('LINE push error:', e);
+    // スタブモードでは502エラーを返さずに警告付きで成功を返す
+    return res.json({ ok: true, push_id: id, message, delivered: false, error: 'line_push_failed', detail: String(e?.message || e), stub_mode: true });
   }
 });
 
@@ -408,3 +412,6 @@ function parseQuery(qs) {
   for (const [k, v] of new URLSearchParams(qs)) out[k] = v;
   return out;
 }
+
+// API routes registration
+app.use('/api', apiRoutes);

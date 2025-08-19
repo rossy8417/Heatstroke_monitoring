@@ -32,7 +32,14 @@ class TwilioService {
     const startTime = Date.now();
     
     if (!this.isConfigured) {
-      logger.warn('Twilio not configured - returning stub call');
+      logger.info('Twilio not configured - returning stub call', {
+        to,
+        alertId,
+        attempt,
+        duration_ms: Date.now() - startTime,
+        provider: 'twilio',
+        status: 'stub'
+      });
       return {
         success: true,
         callSid: `stub_${Date.now()}`,

@@ -162,6 +162,8 @@ export function validateEnv() {
     alertWindows: process.env.ALERT_WINDOWS || '9,13,17',
     quietHours: process.env.QUIET_HOURS || '22-7',
   });
+  
+  return { errors, warnings };
 }
 
 // デフォルト値を設定
