@@ -81,6 +81,13 @@ app.post('/webhooks/line', ...lineWebhookMiddlewares, asyncHandler(async (req, r
 
 app.use(express.json());
 
+// ユーザールート
+import fs from 'fs';
+if (fs.existsSync('./src/routes/userRoutes.js')) {
+  const userRoutes = (await import('./routes/userRoutes.js')).default;
+  app.use('/api/user', userRoutes);
+}
+
 // 実データAPI
 app.use('/api', apiRoutes);
 

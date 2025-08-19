@@ -606,6 +606,168 @@ class SupabaseDataStore {
 
     return { data, error: null };
   }
+
+  // ================== ユーザー管理メソッド ==================
+
+  /**
+   * ユーザープロファイル取得
+   */
+  async getUserProfile(userId) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * ユーザープロファイル更新
+   */
+  async updateUserProfile(userId, updates) {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * ユーザーのサブスクリプション取得
+   */
+  async getUserSubscription(userId) {
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * ユーザーの世帯一覧取得
+   */
+  async getUserHouseholds(userId) {
+    const { data, error } = await supabase
+      .from('user_households')
+      .select(`
+        *,
+        household:households(*)
+      `)
+      .eq('user_id', userId);
+
+    if (error) return { data: null, error };
+
+    // households配列として返す
+    const households = data?.map(uh => ({
+      ...uh.household,
+      relationship: uh.relationship,
+      permissions: uh.permissions
+    })) || [];
+
+    return { data: households, error: null };
+  }
+
+  /**
+   * ユーザーと世帯の関連付け
+   */
+  async linkUserHousehold(userId, householdId, relationship = 'owner', permissions = null) {
+    const defaultPermissions = {
+      view: true,
+      edit: relationship === 'owner',
+      delete: relationship === 'owner'
+    };
+
+    const { data, error } = await supabase
+      .from('user_households')
+      .insert({
+        user_id: userId,
+        household_id: householdId,
+        relationship,
+        permissions: permissions || defaultPermissions
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * ユーザーと世帯の関連情報取得
+   */
+  async getUserHouseholdLink(userId, householdId) {
+    const { data, error } = await supabase
+      .from('user_households')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('household_id', householdId)
+      .single();
+
+    return { data, error };
+  }
+
+  // ================== 緊急連絡先管理 ==================
+
+  /**
+   * 世帯の緊急連絡先一覧取得
+   */
+  async getHouseholdContacts(householdId) {
+    const { data, error } = await supabase
+      .from('household_contacts')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('priority', { ascending: true });
+
+    return { data, error };
+  }
+
+  /**
+   * 緊急連絡先作成
+   */
+  async createHouseholdContact(householdId, contactData) {
+    const { data, error } = await supabase
+      .from('household_contacts')
+      .insert({
+        household_id: householdId,
+        ...contactData
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * 緊急連絡先更新
+   */
+  async updateHouseholdContact(contactId, updates) {
+    const { data, error } = await supabase
+      .from('household_contacts')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', contactId)
+      .select()
+      .single();
+
+    return { data, error };
+  }
+
+  /**
+   * 緊急連絡先削除
+   */
+  async deleteHouseholdContact(contactId) {
+    const { data, error } = await supabase
+      .from('household_contacts')
+      .delete()
+      .eq('id', contactId);
+
+    return { data, error };
+  }
 }
 
 export const supabaseDataStore = new SupabaseDataStore();
