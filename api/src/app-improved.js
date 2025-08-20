@@ -81,12 +81,20 @@ app.post('/webhooks/line', ...lineWebhookMiddlewares, asyncHandler(async (req, r
 
 app.use(express.json());
 
-// ユーザールート
-import fs from 'fs';
-if (fs.existsSync('./src/routes/userRoutes.js')) {
-  const userRoutes = (await import('./routes/userRoutes.js')).default;
-  app.use('/api/user', userRoutes);
-}
+// ユーザールート（遅延読み込み）
+app.use('/api/user', async (req, res, next) => {
+  try {
+    if (!app.locals.userRoutes) {
+      const userRoutesModule = await import('./routes/userRoutes.js');
+      app.locals.userRoutes = userRoutesModule.default;
+      console.log('✅ ユーザールートが正常に読み込まれました');
+    }
+    app.locals.userRoutes(req, res, next);
+  } catch (error) {
+    console.error('⚠️ ユーザールートエラー:', error.message);
+    res.status(500).json({ error: 'User routes initialization failed' });
+  }
+});
 
 // 実データAPI
 app.use('/api', apiRoutes);
