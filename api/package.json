@@ -22,11 +22,11 @@
     "db:seed": "node --env-file=.env scripts/seed-data.js"
   },
   "dependencies": {
-    "@line/bot-sdk": "^9.0.2",
-    "@supabase/supabase-js": "^2.54.0",
+    "@line/bot-sdk": "^10.1.2",
+    "@supabase/supabase-js": "^2.56.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
-    "express": "^4.19.2",
+    "express": "^5.1.0",
     "morgan": "^1.10.0",
     "nanoid": "^5.0.7",
     "stripe": "^18.4.0",
