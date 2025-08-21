@@ -96,6 +96,51 @@ app.use('/api/user', async (req, res, next) => {
   }
 });
 
+// 管理者ルート（ES modules import）
+app.use('/api/admin', async (req, res, next) => {
+  try {
+    if (!app.locals.adminRoutes) {
+      const adminRoutesModule = await import('./routes/adminRoutes.js');
+      app.locals.adminRoutes = adminRoutesModule.default;
+      console.log('✅ 管理者ルートが正常に読み込まれました');
+    }
+    app.locals.adminRoutes(req, res, next);
+  } catch (error) {
+    console.error('⚠️ 管理者ルートエラー:', error.message);
+    res.status(500).json({ error: 'Admin routes initialization failed' });
+  }
+});
+
+// 請求ルート（ES modules import）
+app.use('/api/billing', async (req, res, next) => {
+  try {
+    if (!app.locals.billingRoutes) {
+      const billingRoutesModule = await import('./routes/billingRoutes.js');
+      app.locals.billingRoutes = billingRoutesModule.default;
+      console.log('✅ 請求ルートが正常に読み込まれました');
+    }
+    app.locals.billingRoutes(req, res, next);
+  } catch (error) {
+    console.error('⚠️ 請求ルートエラー:', error.message);
+    res.status(500).json({ error: 'Billing routes initialization failed' });
+  }
+});
+
+// レポートルート（ES modules import）
+app.use('/api/reports', async (req, res, next) => {
+  try {
+    if (!app.locals.reportsRoutes) {
+      const reportsRoutesModule = await import('./routes/reportsRoutes.js');
+      app.locals.reportsRoutes = reportsRoutesModule.default;
+      console.log('✅ レポートルートが正常に読み込まれました');
+    }
+    app.locals.reportsRoutes(req, res, next);
+  } catch (error) {
+    console.error('⚠️ レポートルートエラー:', error.message);
+    res.status(500).json({ error: 'Reports routes initialization failed' });
+  }
+});
+
 // 実データAPI
 app.use('/api', apiRoutes);
 

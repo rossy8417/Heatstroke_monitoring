@@ -1,0 +1,47 @@
+[
+  {
+    "id": "sub_admin",
+    "user_id": "test-token",
+    "type": "business",
+    "status": "active",
+    "price": 9800,
+    "currency": "JPY",
+    "max_households": 0,
+    "max_contacts": 0,
+    "current_period_start": "2024-01-01T00:00:00.000Z",
+    "current_period_end": "2024-09-01T00:00:00.000Z",
+    "cancel_at_period_end": false,
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "updated_at": "2024-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "sub_user1",
+    "user_id": "user-1", 
+    "type": "family",
+    "status": "active",
+    "price": 2980,
+    "currency": "JPY",
+    "max_households": 3,
+    "max_contacts": 10,
+    "current_period_start": "2024-01-15T00:00:00.000Z",
+    "current_period_end": "2024-09-15T00:00:00.000Z",
+    "cancel_at_period_end": false,
+    "created_at": "2024-01-15T00:00:00.000Z",
+    "updated_at": "2024-01-15T00:00:00.000Z"
+  },
+  {
+    "id": "sub_user2",
+    "user_id": "user-2",
+    "type": "personal",
+    "status": "active", 
+    "price": 980,
+    "currency": "JPY",
+    "max_households": 1,
+    "max_contacts": 3,
+    "current_period_start": "2024-02-01T00:00:00.000Z",
+    "current_period_end": "2024-09-01T00:00:00.000Z",
+    "cancel_at_period_end": false,
+    "created_at": "2024-02-01T00:00:00.000Z",
+    "updated_at": "2024-02-01T00:00:00.000Z"
+  }
+]

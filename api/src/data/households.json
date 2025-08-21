@@ -1,0 +1,39 @@
+[
+  {
+    "id": "household-1",
+    "user_id": "test-token",
+    "name": "管理者の家庭",
+    "address": "東京都新宿区1-1-1",
+    "phone": "+81-3-1234-5678",
+    "emergency_contacts": [
+      {"name": "緊急連絡先1", "phone": "+81-3-1111-1111"},
+      {"name": "緊急連絡先2", "phone": "+81-3-2222-2222"}
+    ],
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "updated_at": "2024-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "household-2", 
+    "user_id": "user-1",
+    "name": "田中家",
+    "address": "神奈川県横浜市中区2-2-2",
+    "phone": "+81-45-3333-3333",
+    "emergency_contacts": [
+      {"name": "田中次郎", "phone": "+81-90-4444-4444"}
+    ],
+    "created_at": "2024-01-15T00:00:00.000Z",
+    "updated_at": "2024-01-15T00:00:00.000Z"
+  },
+  {
+    "id": "household-3",
+    "user_id": "user-2",
+    "name": "佐藤家",
+    "address": "大阪府大阪市北区3-3-3",
+    "phone": "+81-6-5555-5555", 
+    "emergency_contacts": [
+      {"name": "佐藤花子", "phone": "+81-90-6666-6666"}
+    ],
+    "created_at": "2024-02-01T00:00:00.000Z",
+    "updated_at": "2024-02-01T00:00:00.000Z"
+  }
+]
