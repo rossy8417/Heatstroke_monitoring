@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
     
     - name: Create Release Notes
       id: release_notes
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
     
     - name: Use Node.js
       uses: actions/setup-node@v3
