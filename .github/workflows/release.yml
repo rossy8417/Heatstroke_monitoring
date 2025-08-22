@@ -95,7 +95,7 @@ jobs:
         tar -czf ../heatstroke-frontend-${{ github.ref_name }}.tar.gz build/
     
     - name: Upload Release Assets
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           heatstroke-api-${{ github.ref_name }}.tar.gz
